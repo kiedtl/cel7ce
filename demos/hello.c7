@@ -1,0 +1,23 @@
+(= title "Hello World!")
+(= n 0)
+
+
+(= step (fn ()
+    ; clear screen
+    (fill 0 0 width height " ")
+
+    ; draw "Hello World!" text
+    (color 1)
+    (put 6 7 "Hello")
+    (color 2)
+    (put 12 7 "World!")
+
+    ; draw divider
+    (color 14)
+    (put 6 8 "............")
+    (color 1)
+    (put (+ 6 (% n 12)) 8 ".")
+
+    ; update step count
+    (= n (+ n 1))
+))

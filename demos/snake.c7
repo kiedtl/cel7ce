@@ -1,0 +1,247 @@
+(= title "Snake")
+(= width 15)
+(= height 15)
+(= highscore 0)
+
+
+(= macro (mac (sym params . body) (list '= sym (cons 'mac (cons params body)))))
+(macro func (sym params . body) (list '= sym (cons 'fn (cons params body))))
+(macro when (x . body) (list 'if x (cons 'do body)))
+(macro ++ (x n) (list '= x (list '+ x (or n 1))))
+(macro -- (x n) (list '= x (list '- x (or n 1))))
+(func each (f lst) (while lst (f (car lst)) (= lst (cdr lst))))
+(func len (lst) (let n 0) (while lst (= lst (cdr lst)) (++ n)) n)
+
+
+(func load-sprites (data)
+    (let i (* 65 7 7)) ; start from "a" offset
+    (each (fn (it)
+        (poke (+ 0x4040 i) it)
+        (++ i)
+    ) data)
+)
+
+(load-sprites '(
+    ; a
+    0 1 1 1 1 1 0
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    0 1 1 1 1 1 0
+    ; b
+    0 1 1 1 1 1 0
+    1 1 0 1 1 1 1
+    1 0 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    0 1 1 1 1 1 0
+    ; c
+    0 0 0 0 0 0 0
+    0 0 0 0 0 0 0
+    0 0 0 0 0 0 0
+    0 0 0 1 0 0 0
+    0 0 0 0 0 0 0
+    0 0 0 0 0 0 0
+    0 0 0 0 0 0 0
+    ; d
+    0 1 1 1 1 1 0
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 0 1 1 1 0 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    0 1 1 1 1 1 0
+    ; e
+    0 1 1 1 1 1 0
+    1 1 1 1 1 1 1
+    1 0 1 1 1 0 1
+    0 1 0 1 0 1 0
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    0 1 1 1 1 1 0
+    ; f
+    0 0 0 0 0 0 0
+    0 0 0 0 0 0 0
+    0 0 0 0 0 0 0
+    0 0 0 0 0 1 1
+    0 1 0 0 1 1 1
+    0 0 1 0 1 1 0
+    0 0 0 0 0 0 0
+))
+
+
+(func overlaps (a b)
+    (and
+        (is (car a) (car b))
+        (is (cdr a) (cdr b))
+    )
+)
+
+
+(func overlaps-any (a b)
+    (let res nil)
+    (while b
+        (when (overlaps a (car b))
+            (= b nil)
+            (= res t)
+        )
+        (= b (cdr b))
+    )
+    res
+)
+
+
+(func place-apple ()
+    (= apple (car snake))
+    (while (overlaps-any apple snake)
+        (= apple (cons (rand width) (rand height)))
+    )
+)
+
+
+(func init ()
+    (= fx 100)
+    (= fx-origin (cons 0 0))
+    (= gameover nil)
+    (= timer 0)
+    (= dir (cons 1 0))
+    (= display-score 0)
+    (= score 0)
+    (= snake (cons (cons (// width 2) (// height 2)) nil))
+    (place-apple)
+)
+
+
+(func keydown (k)
+    (if
+        (is k "escape") (quit)
+        (is k      "r") (init)
+        (is k     "up") (= dir (cons  0 -1))
+        (is k   "down") (= dir (cons  0  1))
+        (is k   "left") (= dir (cons -1  0))
+        (is k  "right") (= dir (cons  1  0))
+    )
+    (= timer 0)
+)
+
+
+(func step ()
+    ; handle tick
+    (-- timer)
+    (when (and (not gameover) (<= timer 0))
+        (= timer (- 5 (/ (len snake) 12)))
+        (if (< timer 2) (= timer 2))
+        (let head (cons
+            (+ (car (car snake)) (car dir))
+            (+ (cdr (car snake)) (cdr dir))
+        ))
+        (= snake (cons head snake))
+        (if
+            (or
+                (< (car head) 0)
+                (< (cdr head) 0)
+                (<= width (car head))
+                (<= height (cdr head))
+                (overlaps-any head (cdr snake))
+            ) (do
+                (= gameover t)
+                (= fx 0)
+                (= fx-origin (cons 7 7))
+            )
+            (overlaps head apple) (do
+                (= fx 0)
+                (= fx-origin apple)
+                (++ score 100)
+                (place-apple)
+            )
+            (< 2 (len snake)) (do
+                (let x snake)
+                (while (cdr (cdr x)) (= x (cdr x)))
+                (setcdr x nil)
+            )
+        )
+    )
+
+    ; update fx counter
+    (++ fx)
+
+    ; clear
+    (color 15) (fill 0 0 width height "c")
+
+    ; draw grid's apple "cross hair"
+    (when (not gameover)
+        (color 14)
+        (if (< (% fx 14) 7)
+            (fill (car apple) 0 1 height "c")
+            (fill 0 (cdr apple) width  1 "c")
+        )
+    )
+
+    ; draw grid's score-fx
+    (when (< fx width)
+        (color (if (< 10 fx) 12 gameover 2 6))
+        (let x (- (car fx-origin) fx))
+        (let y (- (cdr fx-origin) fx))
+        (fill x y (* fx 2) (* fx 2) "c")
+    )
+
+    ; draw score
+    (when (not gameover)
+        (if (< display-score score) (++ display-score 5))
+        (color (if (< fx 4) 4 14))
+        (put 1 1 "SCORE:")
+        (color (if (< fx 8) (rand 10) 1))
+        (put 7 1 display-score)
+    )
+
+    ; draw apple
+    (color (if
+        (< fx 6) (rand 8)  ; spawn-flash
+        (< (% fx 30) 2) 13 ; white-flicker
+        2                  ; normal
+    ))
+    (put (car apple) (cdr apple) "b")
+    (color 5)
+    (put (car apple) (- (cdr apple) 1) "f")
+
+    ; draw snake-body
+    (let i 0)
+    (each (fn (seg)
+        (color (if (is i fx) 4 (+ 5 (/ score 1000))))
+        (put (car seg) (cdr seg) "a")
+        (++ i)
+    ) snake)
+
+    ; draw snake-face
+    (put (car (car snake)) (cdr (car snake))
+        (if
+            (< fx 12) "e"       ; happy
+            (< (% fx 60) 6) "a" ; blink
+            "d"                 ; normal
+        )
+    )
+
+    ; draw apple-score text
+    (when (and (not gameover) (< fx 10))
+        (color (if (< fx 6) (rand 10) 15))
+        (put (- (car fx-origin) 1) (- (cdr fx-origin) 1) "100")
+    )
+
+    ; draw gameover
+    (when gameover
+        (if (< highscore score) (= highscore score))
+        (color (if (< fx 6) (rand 10) 3))
+        (put 4 5 "GAMEOVER")
+        (color 1)
+        (put 4 6 score)
+        (color 6)
+        (put 5 7 "/" highscore)
+        (color 15)
+        (put 2 9 "PRESS 'R' TO")
+        (put 4 10 "RESTART")
+    )
+)
+

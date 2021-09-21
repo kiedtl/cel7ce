@@ -1,0 +1,6 @@
+(= title "Maze")
+(= i 0)
+(= step (fn ()
+    (poke (+ 0x52a0 i) (if (is (rand 2) 0) "\\B" "/B"))
+    (= i (% (+ i 2) (* width height 2)))
+))
