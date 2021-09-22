@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <SDL.h>
 #include "fe.h"
+
 #include "config.h"
 
 #define PALETTE_START    0x4000
@@ -45,6 +46,7 @@ static SDL_Renderer *renderer = NULL;
 static SDL_Texture *texture = NULL;
 
 #include "api.c"
+#include "font.c"
 
 static void
 init_fe(void)
@@ -60,7 +62,7 @@ init_fe(void)
 		);
 	}
 
-	strcpy(config.title, "Cel7 CE");
+	strcpy(config.title, "cel7 ce");
 
 	int gc = fe_savegc(fe_ctx);
 
@@ -81,6 +83,8 @@ init_fe(void)
 
 	fe_restoregc(fe_ctx, gc);
 
+	SDL_SetWindowTitle(window, config.title);
+
 	memory_sz = DISPLAY_START + (config.width * config.height);
 	memory = malloc(memory_sz);
 	memset(memory, 0x0, memory_sz);
@@ -90,6 +94,13 @@ init_fe(void)
 		for (size_t b = 0; b < 4; ++b) {
 			size_t byte = colors[i] >> ((3 - b) * 8);
 			memory[addr + b] = byte & 0xFF;
+		}
+	}
+
+	for (size_t i = 0; i < ARRAY_LEN(font); ++i) {
+		for (size_t j = 0; j < FONT_WIDTH; ++j) {
+			size_t ch = font[i][j] == 'x' ? 1 : 0;
+			memory[FONT_START + (i * FONT_WIDTH) + j] = ch;
 		}
 	}
 }
@@ -124,7 +135,7 @@ init_sdl(void)
 		return false;
 
 	window = SDL_CreateWindow(
-		config.title,
+		"cel7 ce",
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		config.width * FONT_WIDTH * PIXEL_WIDTH,
 		config.height * FONT_HEIGHT * PIXEL_HEIGHT,
@@ -210,25 +221,13 @@ draw(void)
 			for (size_t b = fg_addr; b < (fg_addr + 4); ++b) fg = (fg << 8) | memory[b];
 			fg = (fg << 8) | 0xFF; // Add alpha
 
-			size_t font = FONT_START + (ch * FONT_WIDTH * FONT_HEIGHT);
-			//static char font[7][7] = {
-				//".......",
-				//".xxxx..",
-				//"xx..xx.",
-				//"xxxxxx.",
-				//"xx.....",
-				//"xx...x.",
-				//".xxxx..",
-			//};
-			printf("font start for '%c' is %X\n", ch, font);
+			size_t font = FONT_START + ((ch - 32) * FONT_WIDTH * FONT_HEIGHT);
 
 			for (size_t fy = 0; fy < FONT_HEIGHT; ++fy) {
 				for (size_t fx = 0; fx < FONT_WIDTH; ++fx) {
 					size_t font_ch = memory[font + (fy * FONT_WIDTH + fx)];
 					size_t color = font_ch ? fg : bg;
-					//size_t color = font[fy][fx] == 'x' ? fg : bg;
-					size_t pos = (((dy * FONT_HEIGHT) + fy) * (config.width * FONT_WIDTH) + ((dx * FONT_WIDTH) + fx));
-					pixels[pos] = color;
+					pixels[(((dy * FONT_HEIGHT) + fy) * (config.width * FONT_WIDTH) + ((dx * FONT_WIDTH) + fx))] = color;
 				}
 			}
 		}
@@ -254,7 +253,8 @@ keyname(size_t kcode)
 	break; case SDLK_DOWN:  return "down";
 	break; case SDLK_LEFT:  return "left";
 	break; case SDLK_RIGHT: return "right";
-	break; default:         return sdl_keys[kcode];
+	break; default:
+		return sdl_keys[kcode] ? sdl_keys[kcode] : "unknown";
 	break;
 	}
 }
@@ -318,13 +318,13 @@ run(void)
 int
 main(int argc, char **argv)
 {
+	init_fe();
+
 	bool sdl_error = !init_sdl();
 	if (sdl_error) {
 		fprintf(stderr, "Error initializing SDL: %s\n", SDL_GetError());
 		return 1;
 	}
-
-	init_fe();
 
 	load(argc > 1 ? argv[1] : NULL);
 	run();

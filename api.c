@@ -44,7 +44,6 @@ fe_poke(fe_Context *ctx, fe_Object *arg)
 	} else {
 		size_t byte = (uint8_t)fe_tonumber(ctx, payload);
 		memory[addr] = byte;
-		printf("placing byte %02X at %X", byte, addr);
 	}
 
 	return fe_bool(ctx, 0);
