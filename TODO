@@ -1,2 +1,8 @@
 Find out framerate and set to that
 Support single-file-by-appending-script-to-executable trick
+Find out fe_Context size and set to that
+Find out default title
+Find out default sizes for width/height
+Create default ROM
+Find out endianness of colors in memory
+keys
