@@ -89,7 +89,7 @@ init_fe(void)
 	for (size_t i = 0; i < ARRAY_LEN(colors); ++i) {
 		size_t addr = PALETTE_START + (i * 4);
 		for (size_t b = 0; b < 4; ++b) {
-			size_t byte = colors[i] >> ((3 - b) * 8);
+			size_t byte = colors[i] >> (b * 8);
 			memory[addr + b] = byte & 0xFF;
 		}
 	}
@@ -230,12 +230,14 @@ draw(void)
 
 			size_t bg_addr = PALETTE_START + (bg_i * 4);
 			size_t bg = 0;
-			for (size_t b = bg_addr; b < (bg_addr + 4); ++b) bg = (bg << 8) | memory[b];
+			for (size_t b = (bg_addr + 3); b >= bg_addr; --b)
+				bg = (bg << 8) | memory[b];
 			bg = (bg << 8) | 0xFF; // Add alpha
 
 			size_t fg_addr = PALETTE_START + (fg_i * 4);
 			size_t fg = 0;
-			for (size_t b = fg_addr; b < (fg_addr + 4); ++b) fg = (fg << 8) | memory[b];
+			for (size_t b = (fg_addr + 3); b >= fg_addr; --b)
+				fg = (fg << 8) | memory[b];
 			fg = (fg << 8) | 0xFF; // Add alpha
 
 			size_t font = FONT_START + ((ch - 32) * FONT_WIDTH * FONT_HEIGHT);

@@ -4,6 +4,5 @@ Find out fe_Context size and set to that
 Find out default title
 Find out default sizes for width/height
 Create default ROM
-Find out endianness of colors in memory
 Find out what happens when one passes a string to (fill) that's >1 or <1
 Show errors on display
