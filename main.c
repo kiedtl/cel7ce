@@ -149,7 +149,7 @@ init_sdl(void)
 	if (texture == NULL)
 		return false;
 
-	SDL_AddTimer(1000 / 30, _sdl_tick, NULL);
+	SDL_AddTimer(1000 / 40, _sdl_tick, NULL);
 
 	return true;
 
