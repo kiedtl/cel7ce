@@ -297,6 +297,8 @@ run(void)
 			ssize_t kcode = ev.key.keysym.sym;
 
 			switch (kcode) {
+			break; case SDLK_ESCAPE:
+				quit = true;
 			break; default: {
 				if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keyup"))) == FE_TFUNC) {
 					int gc = fe_savegc(fe_ctx);
