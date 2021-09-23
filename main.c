@@ -77,7 +77,7 @@ init_fe(void)
 		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
 	}
 
-	memory_sz = DISPLAY_START + (100 * 100);
+	memory_sz = DISPLAY_START + (500 * 500);
 	memory = malloc(memory_sz);
 	memset(memory, 0x0, memory_sz);
 
