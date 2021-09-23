@@ -8,6 +8,7 @@ struct Config {
 	char title[512];
 	size_t width;
 	size_t height;
+	size_t scale;
 	bool debug;
 };
 

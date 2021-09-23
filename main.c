@@ -13,8 +13,6 @@
 #define FE_CTX_DATA_SIZE 65535
 #define FONT_HEIGHT      7
 #define FONT_WIDTH       7
-#define PIXEL_HEIGHT     4
-#define PIXEL_WIDTH      4
 
 #define UNUSED(x) (void)(x)
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
@@ -30,6 +28,7 @@ static struct Config config = {
 	.title = "cel7 ce",
 	.width = 24,
 	.height = 16,
+	.scale = 4,
 	.debug = false,
 };
 
@@ -74,6 +73,11 @@ init_fe(void)
 		objs[0] = fe_symbol(fe_ctx, "=");
 		objs[1] = fe_symbol(fe_ctx, "height");
 		objs[2] = fe_number(fe_ctx, config.height);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "scale");
+		objs[2] = fe_number(fe_ctx, config.scale);
 		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
 	}
 
@@ -129,8 +133,8 @@ init_sdl(void)
 	window = SDL_CreateWindow(
 		config.title,
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		config.width * FONT_WIDTH * PIXEL_WIDTH,
-		config.height * FONT_HEIGHT * PIXEL_HEIGHT,
+		config.width * FONT_WIDTH * config.scale,
+		config.height * FONT_HEIGHT * config.scale,
 		SDL_WINDOW_SHOWN
 	);
 	if (window == NULL)
@@ -197,6 +201,9 @@ load(char *filename)
 
 	fe_Object *fe_height = fe_eval(fe_ctx, fe_symbol(fe_ctx, "height"));
 	config.height = (size_t)fe_tonumber(fe_ctx, fe_height);
+
+	fe_Object *fe_scale = fe_eval(fe_ctx, fe_symbol(fe_ctx, "scale"));
+	config.scale = (size_t)fe_tonumber(fe_ctx, fe_scale);
 
 	fe_restoregc(fe_ctx, gc);
 }
