@@ -81,7 +81,7 @@ fe_put(fe_Context *ctx, fe_Object *arg)
 	char buf[4096] = {0};
 	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
 
-	for (size_t i = 0; i < sz; ++i) {
+	for (size_t i = 0; i < sz && (x + i) < config.width; ++i) {
 		size_t coord = y * config.width + (x + i);
 		size_t addr = DISPLAY_START + (coord * 2);
 		memory[addr + 0] = buf[i];
