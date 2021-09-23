@@ -107,10 +107,15 @@ fe_fill(fe_Context *ctx, fe_Object *arg)
 	size_t y = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t w = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t h = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
-	size_t c = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
-	for (size_t dy = y; dy < (dy + h); ++dy) {
-		for (size_t dx = x; dx < (dx + w); ++dx) {
+	char buf[1] = {0};
+	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
+	// TODO: error if sz < 1
+	UNUSED(sz);
+	size_t c = buf[0];
+
+	for (size_t dy = y; dy < (y + h); ++dy) {
+		for (size_t dx = x; dx < (x + w); ++dx) {
 			size_t coord = dy * config.width + dx;
 			size_t addr = DISPLAY_START + (coord * 2);
 			memory[addr + 0] = c;
