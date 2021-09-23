@@ -28,7 +28,7 @@ static uint32_t colors[] = {
 
 static struct Config config = {
 	.title = "cel7 ce",
-	.width = 16,
+	.width = 24,
 	.height = 16,
 	.debug = false,
 };
