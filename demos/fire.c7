@@ -1,0 +1,182 @@
+; vim: ts=4 sts=4 sw=4 expandtab
+
+(= title "Fire, FIRE!")
+(= width  28)
+(= height 42)
+(= scale 2)
+
+(= wind 1)
+(= random-factor 3)
+(= heat-loss 99)
+
+(= max-heat 12)
+(= buf 50)
+
+(= palette '(
+    '(0xC0 0x00 0x00)
+    '(0xFF 0x77 0x00)
+    '(0xFF 0xFF 0xFF)
+))
+
+(= sprites '(
+    ; A
+    1 0 0 1 0 0 1
+    0 0 1 0 1 0 0
+    1 0 0 1 0 0 1
+    0 0 1 0 1 0 0
+    1 0 0 1 0 0 1
+    0 0 1 0 1 0 0
+    1 0 0 1 0 0 1
+    ; B
+    0 1 0 1 0 1 0
+    1 0 1 0 1 0 1
+    0 1 0 1 0 1 0
+    1 0 1 0 1 0 1
+    0 1 0 1 0 1 0
+    1 0 1 0 1 0 1
+    0 1 0 1 0 1 0
+    ; C
+    0 1 1 0 1 1 0
+    1 1 0 1 0 1 1
+    0 1 1 0 1 1 0
+    1 1 0 1 0 1 1
+    0 1 1 0 1 1 0
+    1 1 0 1 0 1 1
+    0 1 1 0 1 1 0
+    ; D
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+    1 1 1 1 1 1 1
+))
+
+(= colors (list
+    '(" " 0x00)
+
+    '("A" 0x01)
+    '("B" 0x01)
+    '("C" 0x01)
+    '("D" 0x01)
+
+    '("A" 0x12)
+    '("B" 0x12)
+    '("C" 0x12)
+    '("D" 0x12)
+
+    '("A" 0x13)
+    '("B" 0x13)
+    '("C" 0x13)
+    '("D" 0x13)
+))
+
+(= init (fn ()
+    (let y 0)
+    (while (< y height) (do
+        (let x 0)
+        (while (< x width) (do
+            (let coord (+ (* y width) x))
+            (poke (+ buf coord)
+                (if (is y (- height 1)) max-heat 0))
+            (= x (+ x 1))
+        ))
+        (= y (+ y 1))
+    ))
+
+    (each (fn (colorset i)
+        (poke (+ (* i 2) 0) (nth colorset 0))
+        (poke (+ (* i 2) 1) (nth colorset 1))
+    ) colors)
+
+    (load-palette palette)
+    (load-sprites sprites)
+))
+
+(= step (fn ()
+    (let rand-wind  (% (% (rand 100) 8) 3))
+    (let rand-lose? (rand 100))
+    (let rand-loss  (% (% (rand 100) 8) 3))
+
+    (let x 0)
+    (while (< x width) (do
+        (let y 2)
+        (while (< y height) (do
+            (if (is (% (rand 100) random-factor) 0) (do
+                (= rand-wind  (% (% (rand 100) 8) 3))
+                (= rand-lose? (rand 100))
+                (= rand-loss  (% (% (rand 100) 8) 3))
+            ))
+
+            (let src-coord  (+ (* y width) x))
+            (let srcval (peek (+ buf src-coord)))
+
+            (let dest-coord (+ (- src-coord rand-wind) wind))
+            (= dest-coord (if (< dest-coord width) 0 (- dest-coord width)))
+
+            (let loss (if (< rand-lose? heat-loss) 2 0))
+
+            (let destval (if (< rand-lose? heat-loss)
+                            (- srcval (% rand-loss loss))
+                            srcval
+                        )
+            )
+            (= destval (if (< destval 0) 0 destval))
+
+            (poke (+ buf dest-coord) destval)
+
+            (poke (+ 0x52a0 (*  src-coord 2) 0) (peek (+ (*   srcval 2) 0)))
+            (poke (+ 0x52a0 (*  src-coord 2) 1) (peek (+ (*   srcval 2) 1)))
+            (poke (+ 0x52a0 (* dest-coord 2) 0) (peek (+ (*  destval 2) 0)))
+            (poke (+ 0x52a0 (* dest-coord 2) 1) (peek (+ (*  destval 2) 1)))
+
+            (= y (+ y 1))
+        ))
+
+        (= x (+ x 1))
+    ))
+
+    (color 1)
+    (put  2           1 "Fire, FIRE!")
+    (color (if (is (rand 7) 0) 0 1))
+    (put  1           1 "*")
+    (color (if (is (rand 7) 0) 0 1))
+    (put 13           1 "*")
+))
+
+(= nth (fn (lst n)
+    (if (is n 0)
+        (car lst)
+        (nth (cdr lst) (- n 1))
+    )
+))
+
+(= each (fn (f lst)
+    (let i 0)
+    (while lst
+        (f (car lst) i)
+        (= lst (cdr lst))
+        (= i (+ i 1))
+    )
+))
+
+(= load-palette (fn (data)
+    (let i 1)
+    (while data (do
+        (poke (+ 0x4000 (+ (* i 4) 1)) (nth (car (cdr (car data))) 0))
+        (poke (+ 0x4000 (+ (* i 4) 2)) (nth (car (cdr (car data))) 1))
+        (poke (+ 0x4000 (+ (* i 4) 3)) (nth (car (cdr (car data))) 2))
+        (= data (cdr data))
+        (= i (+ i 1))
+    ))
+))
+
+(= load-sprites (fn (data)
+    (let i (* 33 7 7)) ; start from "A" offset
+    (while data (do
+        (poke (+ 0x4040 i) (car data))
+        (= data (cdr data))
+        (= i (+ i 1))
+    ))
+))
