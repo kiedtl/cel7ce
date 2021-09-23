@@ -1,4 +1,7 @@
 (= title "Hello World!")
+(= scale 7)
+(= width 16)
+(= height 6)
 (= n 0)
 
 
@@ -8,15 +11,17 @@
 
     ; draw "Hello World!" text
     (color 1)
-    (put 6 7 "Hello")
+    ;(put 6 7 "Hello")
+    (put 2 2 "Hello")
     (color 2)
-    (put 12 7 "World!")
+    ;(put 12 7 "World!")
+    (put 8 2 "World!")
 
     ; draw divider
     (color 14)
-    (put 6 8 "............")
+    (put 2 3 "............")
     (color 1)
-    (put (+ 6 (% n 12)) 8 ".")
+    (put (+ 2 (% n 12)) 3 ".")
 
     ; update step count
     (= n (+ n 1))
