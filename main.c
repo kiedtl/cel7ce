@@ -7,12 +7,13 @@
 
 #include "config.h"
 
-#define PALETTE_START    0x4000
-#define FONT_START       0x4040
-#define DISPLAY_START    0x52a0
-#define FE_CTX_DATA_SIZE 65535
-#define FONT_HEIGHT      7
-#define FONT_WIDTH       7
+#define PALETTE_START       0x4000
+#define FONT_START          0x4040
+#define DISPLAY_START       0x52a0
+#define FE_CTX_DATA_SIZE    65535
+#define FONT_HEIGHT         7
+#define FONT_WIDTH          7
+#define FONT_FALLBACK_GLYPH 0x7F
 
 #define UNUSED(x) (void)(x)
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
@@ -223,7 +224,9 @@ draw(void)
 			size_t fg_i = (memory[addr + 1] >> 0) & 0xF;
 			size_t bg_i = (memory[addr + 1] >> 4) & 0xF;
 
-			if (ch < 32) ch = 32;
+			// Handle unprintable chars
+			if (ch < 32 || ch > 126)
+				ch = FONT_FALLBACK_GLYPH;
 
 			size_t bg_addr = PALETTE_START + (bg_i * 4);
 			size_t bg = 0;

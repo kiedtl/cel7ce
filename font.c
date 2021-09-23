@@ -759,4 +759,12 @@ static char font[][7] = {
 	".......",
 	".......",
 	".......",
+	// unprintable
+	"xxxxxxx",
+	"xxxxxxx",
+	"xxxxxxx",
+	"xxxxxxx",
+	"xxxxxxx",
+	"xxxxxxx",
+	"xxxxxxx",
 };
