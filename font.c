@@ -1,4 +1,6 @@
-static char font[][7] = {
+#include "cel7ce.h"
+
+char font[96 * FONT_HEIGHT][FONT_WIDTH] = {
 	// space
 	".......",
 	".......",

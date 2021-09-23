@@ -2,7 +2,7 @@ CMD      = @
 
 VERSION  = 0.1.0
 NAME     = cel7
-SRC      = third_party/fe/src/fe.c
+SRC      = api.c font.c util.c third_party/fe/src/fe.c
 OBJ      = $(SRC:.c=.o)
 
 WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes \
@@ -15,22 +15,20 @@ WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes 
 DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE
 INCL     = -Ithird_party/fe/src/
 CC       = cc
-CFLAGS   = -Og -g $(DEF) $(INCL) $(WARNING) -funsigned-char
+CFLAGS   = -Og -g $(DEF) $(INCL) $(WARNING) -funsigned-char $(shell sdl2-config --cflags)
 LD       = bfd
-LDFLAGS  = -fuse-ld=$(LD) -L/usr/include -lm -lexecinfo
+LDFLAGS  = -fuse-ld=$(LD) -L/usr/include -lm -lexecinfo $(shell sdl2-config --libs)
 
 .PHONY: all
 all: $(NAME)
 
 %.o: %.c
 	@printf "    %-8s%s\n" "CC" $@
-	$(CMD)$(CC) -c $< -o $@ $(CFLAGS)
-
-main.c: api.c config.h
+	$(CMD)$(CC) -o $@ -c $< $(CFLAGS)
 
 $(NAME): main.c $(OBJ)
 	@printf "    %-8s%s\n" "CCLD" $@
-	$(CMD)$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(shell sdl2-config --cflags --libs)
+	$(CMD)$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 .PHONY: clean
 clean:

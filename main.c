@@ -4,19 +4,7 @@
 #include <stdlib.h>
 #include <SDL.h>
 #include "fe.h"
-
-#include "config.h"
-
-#define PALETTE_START       0x4000
-#define FONT_START          0x4040
-#define DISPLAY_START       0x52a0
-#define FE_CTX_DATA_SIZE    65535
-#define FONT_HEIGHT         7
-#define FONT_WIDTH          7
-#define FONT_FALLBACK_GLYPH 0x7F
-
-#define UNUSED(x) (void)(x)
-#define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
+#include "cel7ce.h"
 
 static uint32_t colors[] = {
 	0x0b0c0d, 0xf7f7e6, 0xf71467, 0xfd971f,
@@ -25,7 +13,7 @@ static uint32_t colors[] = {
 	0x7c8d99, 0xc2beae, 0x75715e, 0x3e3d32
 };
 
-static struct Config config = {
+struct Config config = {
 	.title = "cel7 ce",
 	.width = 24,
 	.height = 16,
@@ -33,20 +21,17 @@ static struct Config config = {
 	.debug = false,
 };
 
-static uint8_t *memory = NULL;
-static size_t memory_sz = 0;
-static size_t color = 1;
+uint8_t *memory = NULL;
+size_t memory_sz = 0;
+size_t color = 1;
 
-static void *fe_ctx_data = NULL;
-static fe_Context *fe_ctx = NULL;
-static bool quit = false;
+void *fe_ctx_data = NULL;
+fe_Context *fe_ctx = NULL;
+bool quit = false;
 
-static SDL_Window *window = NULL;
-static SDL_Renderer *renderer = NULL;
-static SDL_Texture *texture = NULL;
-
-#include "api.c"
-#include "font.c"
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *texture = NULL;
 
 static void
 init_fe(void)
@@ -229,15 +214,11 @@ draw(void)
 				ch = FONT_FALLBACK_GLYPH;
 
 			size_t bg_addr = PALETTE_START + (bg_i * 4);
-			size_t bg = 0;
-			for (size_t b = (bg_addr + 3); b >= bg_addr; --b)
-				bg = (bg << 8) | memory[b];
+			size_t bg = decode_u32_from_bytes(&memory[bg_addr]);
 			bg = (bg << 8) | 0xFF; // Add alpha
 
 			size_t fg_addr = PALETTE_START + (fg_i * 4);
-			size_t fg = 0;
-			for (size_t b = (fg_addr + 3); b >= fg_addr; --b)
-				fg = (fg << 8) | memory[b];
+			size_t fg = decode_u32_from_bytes(&memory[fg_addr]);
 			fg = (fg << 8) | 0xFF; // Add alpha
 
 			size_t font = FONT_START + ((ch - 32) * FONT_WIDTH * FONT_HEIGHT);

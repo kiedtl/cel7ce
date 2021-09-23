@@ -1,4 +1,5 @@
 #include "fe.h"
+#include "cel7ce.h"
 
 static fe_Object *
 fe_divide(fe_Context *ctx, fe_Object *arg)
@@ -128,10 +129,8 @@ fe_fill(fe_Context *ctx, fe_Object *arg)
 
 	return fe_bool(ctx, 0);
 }
-static const struct {
-	const char *name;
-	fe_Object *(*func)(fe_Context *, fe_Object *);
-} fe_apis[] = {
+
+const struct ApiFunc fe_apis[10] = {
 	{     "//",    fe_divide },
 	{      "%",   fe_modulus },
 	{   "quit",      fe_quit },
