@@ -77,28 +77,7 @@ init_fe(void)
 		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
 	}
 
-	int gc = fe_savegc(fe_ctx);
-
-	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"))) == FE_TSTRING) {
-		fe_Object *fe_title = fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"));
-		fe_tostring(fe_ctx, fe_title, (char *)&config.title, sizeof(config.title));
-	}
-
-	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "width"))) == FE_TNUMBER) {
-		fe_Object *fe_width = fe_eval(fe_ctx, fe_symbol(fe_ctx, "width"));
-		config.width = (size_t)fe_tonumber(fe_ctx, fe_width);
-	}
-
-	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "height"))) == FE_TNUMBER) {
-		fe_Object *fe_height = fe_eval(fe_ctx, fe_symbol(fe_ctx, "height"));
-		config.height = (size_t)fe_tonumber(fe_ctx, fe_height);
-	}
-
-	fe_restoregc(fe_ctx, gc);
-
-	SDL_SetWindowTitle(window, config.title);
-
-	memory_sz = DISPLAY_START + (config.width * config.height);
+	memory_sz = DISPLAY_START + (100 * 100);
 	memory = malloc(memory_sz);
 	memset(memory, 0x0, memory_sz);
 
@@ -148,7 +127,7 @@ init_sdl(void)
 		return false;
 
 	window = SDL_CreateWindow(
-		"cel7 ce",
+		config.title,
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		config.width * FONT_WIDTH * PIXEL_WIDTH,
 		config.height * FONT_HEIGHT * PIXEL_HEIGHT,
@@ -205,6 +184,21 @@ load(char *filename)
 	}
 
 	fclose(fp);
+
+	gc = fe_savegc(fe_ctx);
+
+	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"))) == FE_TSTRING) {
+		fe_Object *fe_title = fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"));
+		fe_tostring(fe_ctx, fe_title, (char *)&config.title, sizeof(config.title));
+	}
+
+	fe_Object *fe_width = fe_eval(fe_ctx, fe_symbol(fe_ctx, "width"));
+	config.width = (size_t)fe_tonumber(fe_ctx, fe_width);
+
+	fe_Object *fe_height = fe_eval(fe_ctx, fe_symbol(fe_ctx, "height"));
+	config.height = (size_t)fe_tonumber(fe_ctx, fe_height);
+
+	fe_restoregc(fe_ctx, gc);
 }
 
 static void
@@ -291,23 +285,27 @@ run(void)
 			quit = true;
 		} break; case SDL_KEYDOWN: {
 			ssize_t kcode = ev.key.keysym.sym;
-			int gc = fe_savegc(fe_ctx);
-			fe_Object *objs[2];
-			objs[0] = fe_symbol(fe_ctx, "keydown");
-			objs[1] = fe_string(fe_ctx, keyname(kcode));
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
-			fe_restoregc(fe_ctx, gc);
+			if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keydown"))) == FE_TFUNC) {
+				int gc = fe_savegc(fe_ctx);
+				fe_Object *objs[2];
+				objs[0] = fe_symbol(fe_ctx, "keydown");
+				objs[1] = fe_string(fe_ctx, keyname(kcode));
+				fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
+				fe_restoregc(fe_ctx, gc);
+			}
 		} break; case SDL_KEYUP: {
 			ssize_t kcode = ev.key.keysym.sym;
 
 			switch (kcode) {
 			break; default: {
-				int gc = fe_savegc(fe_ctx);
-				fe_Object *objs[2];
-				objs[0] = fe_symbol(fe_ctx, "keyup");
-				objs[1] = fe_string(fe_ctx, keyname(kcode));
-				fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
-				fe_restoregc(fe_ctx, gc);
+				if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keyup"))) == FE_TFUNC) {
+					int gc = fe_savegc(fe_ctx);
+					fe_Object *objs[2];
+					objs[0] = fe_symbol(fe_ctx, "keyup");
+					objs[1] = fe_string(fe_ctx, keyname(kcode));
+					fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
+					fe_restoregc(fe_ctx, gc);
+				}
 			} break;
 			}
 		} break; case SDL_USEREVENT: {
@@ -332,6 +330,7 @@ int
 main(int argc, char **argv)
 {
 	init_fe();
+	load(argc > 1 ? argv[1] : NULL);
 
 	bool sdl_error = !init_sdl();
 	if (sdl_error) {
@@ -339,7 +338,6 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	load(argc > 1 ? argv[1] : NULL);
 	run();
 
 	deinit_fe();

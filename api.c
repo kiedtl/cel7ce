@@ -108,10 +108,11 @@ fe_fill(fe_Context *ctx, fe_Object *arg)
 	size_t w = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t h = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
-	char buf[1] = {0};
+	char buf[2] = {0};
 	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
-	// TODO: error if sz < 1
-	UNUSED(sz);
+	if (sz < 1 || sz > 1) {
+		fe_error(ctx, "Expected a string with one character");
+	}
 	size_t c = buf[0];
 
 	for (size_t dy = y; dy < (y + h); ++dy) {
