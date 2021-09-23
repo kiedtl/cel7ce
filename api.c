@@ -57,12 +57,14 @@ fe_peek(fe_Context *ctx, fe_Object *arg)
 
 	if (fe_type(ctx, arg) == FE_TPAIR) {
 		size = (size_t)fe_tonumber(ctx, fe_car(ctx, arg));
+
+		char buf[4096] = {0};
+		memcpy((void *)&buf, (void *)&memory[addr], size);
+
+		return fe_string(ctx, (const char *)&buf);
+	} else {
+		return fe_number(ctx, (float)memory[addr]);
 	}
-
-	char buf[4096] = {0};
-	memcpy((void *)&buf, (void *)&memory[addr], size);
-
-	return fe_string(ctx, (const char *)&buf);
 }
 
 static fe_Object *
