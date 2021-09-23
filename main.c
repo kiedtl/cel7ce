@@ -27,7 +27,7 @@ static uint32_t colors[] = {
 };
 
 static struct Config config = {
-	.title = {0},
+	.title = "cel7 ce",
 	.width = 16,
 	.height = 16,
 	.debug = false,
@@ -62,7 +62,20 @@ init_fe(void)
 		);
 	}
 
-	strcpy(config.title, "cel7 ce");
+	// Set default values of variables
+	{
+		fe_Object *objs[3];
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "width");
+		objs[2] = fe_number(fe_ctx, config.width);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "height");
+		objs[2] = fe_number(fe_ctx, config.height);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+	}
 
 	int gc = fe_savegc(fe_ctx);
 
