@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <SDL.h>
+#include <time.h>
 #include "fe.h"
 #include "cel7ce.h"
 
@@ -324,6 +325,8 @@ run(void)
 int
 main(int argc, char **argv)
 {
+	srand(time(NULL));
+
 	init_fe();
 	load(argc > 1 ? argv[1] : NULL);
 
