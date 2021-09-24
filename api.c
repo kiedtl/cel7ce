@@ -149,16 +149,6 @@ fe_strstart(fe_Context *ctx, fe_Object *arg)
 }
 
 static fe_Object *
-fe_streq(fe_Context *ctx, fe_Object *arg)
-{
-	static char buf1[4096] = {0};
-	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf1, sizeof(buf1));
-	static char buf2[4096] = {0};
-	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf2, sizeof(buf2));
-	return fe_bool(ctx, !strcmp((const char *)&buf1, (const char *)&buf2));
-}
-
-static fe_Object *
 fe_strat(fe_Context *ctx, fe_Object *arg)
 {
 	static char buf[4096] = {0};
@@ -166,6 +156,14 @@ fe_strat(fe_Context *ctx, fe_Object *arg)
 	size_t ind = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	buf[ind + 1] = '\0';
 	return fe_string(ctx, (const char *)&buf[ind]);
+}
+
+static fe_Object *
+fe_ch2num(fe_Context *ctx, fe_Object *arg)
+{
+	static char buf[2] = {0};
+	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
+	return fe_number(ctx, (float)buf[0]);
 }
 
 static fe_Object *
@@ -178,19 +176,19 @@ fe_username(fe_Context *ctx, fe_Object *arg)
 }
 
 const struct ApiFunc fe_apis[15] = {
-	{       "//",    fe_divide },
-	{        "%",   fe_modulus },
-	{     "quit",      fe_quit },
-	{     "rand",      fe_rand },
-	{     "poke",      fe_poke },
-	{     "peek",      fe_peek },
-	{    "color",     fe_color },
-	{      "put",       fe_put },
-	{      "get",       fe_get },
-	{     "fill",      fe_fill },
-	{   "strlen",    fe_strlen },
-	{ "strstart",  fe_strstart },
-	{    "streq",     fe_streq },
-	{    "strat",     fe_strat },
-	{ "username",  fe_username },
+	{        "//",    fe_divide },
+	{         "%",   fe_modulus },
+	{      "quit",      fe_quit },
+	{      "rand",      fe_rand },
+	{      "poke",      fe_poke },
+	{      "peek",      fe_peek },
+	{     "color",     fe_color },
+	{       "put",       fe_put },
+	{       "get",       fe_get },
+	{      "fill",      fe_fill },
+	{    "strlen",    fe_strlen },
+	{  "strstart",  fe_strstart },
+	{     "strat",     fe_strat },
+	{ "char->num",    fe_ch2num },
+	{  "username",  fe_username },
 };
