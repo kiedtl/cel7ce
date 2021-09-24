@@ -130,15 +130,67 @@ fe_fill(fe_Context *ctx, fe_Object *arg)
 	return fe_bool(ctx, 0);
 }
 
-const struct ApiFunc fe_apis[10] = {
-	{     "//",    fe_divide },
-	{      "%",   fe_modulus },
-	{   "quit",      fe_quit },
-	{   "rand",      fe_rand },
-	{   "poke",      fe_poke },
-	{   "peek",      fe_peek },
-	{  "color",     fe_color },
-	{    "put",       fe_put },
-	{    "get",       fe_get },
-	{   "fill",      fe_fill },
+static fe_Object *
+fe_strlen(fe_Context *ctx, fe_Object *arg)
+{
+	static char buf[4096] = {0};
+	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
+	return fe_number(ctx, (float)sz);
+}
+
+static fe_Object *
+fe_strstart(fe_Context *ctx, fe_Object *arg)
+{
+	static char buf1[4096] = {0};
+	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf1, sizeof(buf1));
+	static char buf2[4096] = {0};
+	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf2, sizeof(buf2));
+	return fe_bool(ctx, !strncmp((const char *)&buf1, (const char *)&buf2, sz));
+}
+
+static fe_Object *
+fe_streq(fe_Context *ctx, fe_Object *arg)
+{
+	static char buf1[4096] = {0};
+	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf1, sizeof(buf1));
+	static char buf2[4096] = {0};
+	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf2, sizeof(buf2));
+	return fe_bool(ctx, !strcmp((const char *)&buf1, (const char *)&buf2));
+}
+
+static fe_Object *
+fe_strat(fe_Context *ctx, fe_Object *arg)
+{
+	static char buf[4096] = {0};
+	fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
+	size_t ind = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+	buf[ind + 1] = '\0';
+	return fe_string(ctx, (const char *)&buf[ind]);
+}
+
+static fe_Object *
+fe_username(fe_Context *ctx, fe_Object *arg)
+{
+	UNUSED(arg);
+	char *u = getenv("USER");
+	if (u == NULL) u = "root";
+	return fe_string(ctx, u);
+}
+
+const struct ApiFunc fe_apis[15] = {
+	{       "//",    fe_divide },
+	{        "%",   fe_modulus },
+	{     "quit",      fe_quit },
+	{     "rand",      fe_rand },
+	{     "poke",      fe_poke },
+	{     "peek",      fe_peek },
+	{    "color",     fe_color },
+	{      "put",       fe_put },
+	{      "get",       fe_get },
+	{     "fill",      fe_fill },
+	{   "strlen",    fe_strlen },
+	{ "strstart",  fe_strstart },
+	{    "streq",     fe_streq },
+	{    "strat",     fe_strat },
+	{ "username",  fe_username },
 };
