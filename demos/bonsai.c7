@@ -5,21 +5,83 @@
 (= height 40)
 (= scale 2)
 
-(= leaf-chars '("a" "b" "c"))
-(= base '("(_____)" "(       )" "(         )"))
+(= leaf-chars (list
+    (list "&")
+    (list "&" "&")
+    (list "Z" "X" "Y")
+    (list "@" "O" "C")
+    (list "&" "&" "@")
+    (list "&" "&")
+    (list "&")
+))
+(= leaf-chars-len 4)
+(= base (list "(_____)" "(       )" "(         )"))
 (= base-height 2)
 
-(= life-start    35)
-(= multiplier     5)
-(= last-shoot    "")
+(= life-start  35)
+(= multiplier   5)
+(= last-shoot  "")
 
-(= palette '(
-    '(0x04 0x0B 0x01)
-    '(0xFF 0xFF 0xFF)
-    '(0x80 0x50 0x01)
-    '(0xA0 0x70 0x00)
-    '(0x5F 0x7F 0x30)
-    '(0x6F 0xAF 0x4F)
+(= palette (list 
+    (list 0x04 0x0B 0x01)
+    (list 0xFF 0xFF 0xFF)
+    (list 0x80 0x50 0x01)
+    (list 0xA0 0x70 0x00)
+    (list 0x5F 0x7F 0x30)
+    (list 0x6F 0xAF 0x4F)
+))
+
+(= sprites (list 
+    (list 
+        "Y"
+        0 1 1 1 1 0 0
+        1 1 1 1 1 1 0
+        1 0 0 0 0 1 0
+        1 1 1 1 1 1 0
+        1 0 0 0 0 1 0
+        0 1 1 1 1 0 0
+        0 0 0 0 0 0 0
+    )
+    (list 
+        "X"
+        0 1 1 1 1 0 0
+        1 0 1 0 1 1 0
+        1 0 1 0 1 1 0
+        1 0 1 0 1 1 0
+        1 0 1 0 1 1 0
+        0 1 1 1 1 0 0
+        0 0 0 0 0 0 0
+    )
+    (list 
+        "Z"
+        0 1 1 1 1 0 0
+        0 0 0 0 0 1 0
+        1 1 1 1 0 1 0
+        1 1 1 1 0 1 0
+        1 0 0 0 0 1 0
+        0 1 1 1 1 0 0
+        0 0 0 0 0 0 0
+    )
+    (list 
+        "\\"
+        1 0 0 0 0 0 0
+        0 1 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 1 0 0 0
+        0 0 0 0 1 0 0
+        0 0 0 0 0 1 0
+        0 0 0 0 0 0 1
+    )
+    (list 
+        "/"
+        0 0 0 0 0 0 1
+        0 0 0 0 0 1 0
+        0 0 0 0 0 0 0
+        0 0 0 1 0 0 0
+        0 0 1 0 0 0 0
+        0 1 0 0 0 0 0
+        1 0 0 0 0 0 0
+    )
 ))
 
 (= init (fn ()
@@ -31,6 +93,7 @@
     (= stack        (list))
 
     (load-palette palette)
+    (load-sprites sprites)
 
     (fill 0 0 width height " ")
 
@@ -113,7 +176,7 @@
                     (<= rnd 9) (= dy  1)
                 )
             )
-            (streq type "dying") (do
+            (is type "dying") (do
                 (let rnd (rand 10))
                 (if
                     (<= rnd 1) (= dy -1)
@@ -137,13 +200,13 @@
             (and (> dx 0) (> x (-  width 2)))                 (= dx -1)
         )
 
-        (if (and (streq type "trunk") (< life 4))
+        (if (and (is type "trunk") (< life 4))
             (= dy 0)
         )
 
         ; Determine dx
         (if
-            (streq type "shoot-left") (do
+            (is type "shoot-left") (do
                 ; Trend left (dx = [-2, 1])
                 (let rnd (rand 10))
                 (if
@@ -153,7 +216,7 @@
                     (<= rnd 9) (= dx  1)
                 )
             )
-            (streq type "shoot-right") (do
+            (is type "shoot-right") (do
                 ; Trend left (dx = [-1, 2])
                 (let rnd (rand 10))
                 (if
@@ -163,7 +226,7 @@
                     (<= rnd 9) (= dx -1)
                 )
             )
-            (streq type "dying") (do
+            (is type "dying") (do
                 ; Trend equal (dx = [-3, 3])
                 (= dx (- (rand 7) 3))
             )
@@ -181,11 +244,11 @@
                     (queue x y "dead" life)
 
                 ; Branch is dying and needs to branch into leaves
-                (and (or (streq type "trunk") (strstart type "shoot")) (< life (+ multiplier 2)))
+                (and (or (is type "trunk") (strstart type "shoot")) (< life (+ multiplier 2)))
                     (queue x y "dying" life)
 
                 ; Re-branch again
-                (and (streq type "trunk") (< life (- life-start 8))
+                (and (is type "trunk") (< life (- life-start 8))
                      (or (is (rand (- 16 multiplier)) 0)
                          (and (is (% life 5) 0) (> life 5))))
                     (if 
@@ -206,7 +269,7 @@
                                     (if (is (rand 2) 0) "shoot-left" "shoot-right")
 
                                 ; Later shoots alternate from the last
-                                (if (streq last-shoot "shoot-left") "shoot-right" "shoot-left")
+                                (if (is last-shoot "shoot-left") "shoot-right" "shoot-left")
                             ))
 
                             (queue x y last-shoot new-life)
@@ -232,38 +295,43 @@
         (if
             (strstart type "trunk") (do
                 (if
-                    (<  dx  0) (= chars '("\\"))
-                    (is dx  0) (= chars '("/" "|"))
-                    (<   0 dx) (= chars '("/"))
+                    (<  dx  0) (= chars (list "\\"))
+                    (is dx  0) (= chars (list "/" "|"))
+                    (<   0 dx) (= chars (list "/"))
                 )
 
                 ; Not growing?
-                (if (is dy 0) (= chars '("/" "~")))
+                (if (is dy 0) (= chars (list "/" "~")))
             )
             (strstart type "shoot") (do
                 (if
-                    (< dx -1) (= chars '("\\" "|"))
-                    (< dx  0) (= chars '("/" "|"))
-                    (< dx  3) (= chars '("/"))
+                    (< dx -1) (= chars (list "\\" "|"))
+                    (< dx  0) (= chars (list "/" "|"))
+                    (< dx  3) (= chars (list "/"))
                 )
 
                 ; Are we growing down/not growing?
                 (if (or (is dy 0) (< 0 dy))
                     (if
-                        (streq type "shoot-left")
-                            (= chars (if (is dy 0) '("\\" "_") '("/")))
-                        (streq type "shoot-right")
-                            (= chars (if (is dy 0) '("/" "_") '("\\")))
+                        (is type "shoot-left")
+                            (= chars (if (is dy 4) (list "\\" "_") (list "/")))
+                        (is type "shoot-right")
+                            (= chars (if (is dy 4) (list "/" "_") (list "\\")))
                     )
                 )
             )
         )
 
-        (if (< life 4) (= chars leaf-chars))
+        (if (< life 4)
+            (= chars (nth leaf-chars (rand leaf-chars-len))))
 
-        (each (fn (ch i)
-            (let new-x (+ x i))
-            (put new-x y ch)
+        (= i 0)
+        (each (fn (ch)
+            (if (< (rand 10) 8) (do
+                (let new-x (+ x i))
+                (put new-x y ch)
+            ))
+            (= i (+ i 1))
         ) chars)
     )
 ))
@@ -291,19 +359,22 @@
 (= load-palette (fn (data)
     (let i 0)
     (while data (do
-        (poke (+ 0x4000 (+ (* i 4) 0)) (nth (car (cdr (car data))) 2))
-        (poke (+ 0x4000 (+ (* i 4) 1)) (nth (car (cdr (car data))) 1))
-        (poke (+ 0x4000 (+ (* i 4) 2)) (nth (car (cdr (car data))) 0))
+        (poke (+ 0x4000 (+ (* i 4) 0)) (nth (car data) 2))
+        (poke (+ 0x4000 (+ (* i 4) 1)) (nth (car data) 1))
+        (poke (+ 0x4000 (+ (* i 4) 2)) (nth (car data) 0))
         (= data (cdr data))
         (= i (+ i 1))
     ))
 ))
 
 (= load-sprites (fn (data)
-    (let i (* 33 7 7)) ; start from "A" offset
-    (while data (do
-        (poke (+ 0x4040 i) (car data))
-        (= data (cdr data))
-        (= i (+ i 1))
-    ))
+    (each (fn (sprite)
+        (let char (- (char->num (car sprite)) 32))
+        (let offset (+ 0x4040 (* char 7 7)))
+        (= sprite (cdr sprite))
+
+        (each (fn (pixel i)
+            (poke (+ offset i) pixel)
+        ) sprite)
+    ) data)
 ))
