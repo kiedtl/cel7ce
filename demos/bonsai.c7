@@ -1,0 +1,303 @@
+; vim: ts=4 sts=4 sw=4 expandtab
+
+(= title "Bonsai")
+(= width  40)
+(= height 40)
+(= scale 2)
+
+(= leaf-chars '("a" "b" "c"))
+(= base '(" (_____) " "(       )" "(         )"))
+(= base-height 2)
+
+(= life-start    35)
+(= multiplier     5)
+(= last-shoot    "")
+
+(= steps 0)
+(= branches 0)
+(= shoots   0)
+(= max-branches (* multiplier 110))
+(= max-shoots   multiplier)
+
+(= stack (list))
+
+(= palette '(
+    '(0x04 0x0B 0x01)
+    '(0xFF 0xFF 0xFF)
+    '(0x80 0x50 0x01)
+    '(0xA0 0x70 0x00)
+    '(0x5F 0x7F 0x30)
+    '(0x6F 0xAF 0x4F)
+))
+
+(= init (fn ()
+    (each (fn (base i)
+        (let x (- (/ width 2) (/ (strlen base) 2)))
+        (let y (- height (+ i 1)))
+        (put x y base)
+    ) base)
+
+    (load-palette palette)
+
+    (let x (// width 2))
+    (let y (- height (+ base-height 1)))
+    (queue x y "trunk" life-start)
+))
+
+(= step (fn ()
+    (if stack (do
+        (let cur (car stack))
+        (= stack (cdr stack))
+        (branch
+            (car cur)
+            (car (cdr cur))
+            (car (cdr (cdr cur)))
+            (car (cdr (cdr (cdr cur))))
+        )
+    ))
+
+    ; Draw text
+    (let rstr "'r' to restart")
+    (color 15)
+    (put (- width (strlen rstr) 1) 1 rstr)
+
+    (if stack
+        (do
+            (let str "growing...")
+            (let ind (% (// steps 2) (strlen str)))
+
+            (color 15)
+            (put 1 1 str)
+            (color 14)
+            (put (+ ind 1) 1 (strat str ind))
+        )
+
+        (do
+            (color 1)
+            (let user (username))
+            (put 1 1 user)
+            (put (+ (strlen user) 1) 1 "'s bonsai")
+        )
+    )
+
+    (= steps (+ steps 1))
+))
+
+(= queue (fn (x y type life)
+    (= stack (cons (list x y type life) stack))
+))
+
+(= branch (fn (x y type life)
+    (let dx 0)
+    (let dy 0)
+    (let chars (list))
+
+    (= branches (+ branches 1))
+
+    (while (< 0 life)
+        (= life (- life 1))
+
+        ; Determine dy
+        (if
+            (strstart type "shoot") (do
+                (let rnd (rand 10))
+                (if
+                    (<= rnd 1) (= dy -1)
+                    (<= rnd 7) (= dy  0)
+                    (<= rnd 9) (= dy  1)
+                )
+            )
+            (streq type "dying") (do
+                (let rnd (rand 10))
+                (if
+                    (<= rnd 1) (= dy -1)
+                    (<= rnd 8) (= dy  0)
+                    (<= rnd 9) (= dy  1)
+                )
+            )
+            (do
+                (= dy 0)
+                (if (and (not (is life life-start)) (> (rand 10) 2))
+                    (= dy -1)
+                )
+            )
+        )
+
+        ; Backtrack if we're near the edges.
+        (if
+            (and (< dy 0) (< y 4))                            (= dy  1)
+            (and (> dy 0) (> y (- height (+ base-height 1)))) (= dy -1)
+            (and (< dx 0) (< x 4))                            (= dx  1)
+            (and (> dx 0) (> x (-  width 2)))                 (= dx -1)
+        )
+
+        (if (and (streq type "trunk") (< life 4))
+            (= dy 0)
+        )
+
+        ; Determine dx
+        (if
+            (streq type "shoot-left") (do
+                ; Trend left (dx = [-2, 1])
+                (let rnd (rand 10))
+                (if
+                    (<= rnd 1) (= dx -2)
+                    (<= rnd 5) (= dx -1)
+                    (<= rnd 8) (= dx  0)
+                    (<= rnd 9) (= dx  1)
+                )
+            )
+            (streq type "shoot-right") (do
+                ; Trend left (dx = [-1, 2])
+                (let rnd (rand 10))
+                (if
+                    (<= rnd 1) (= dx  2)
+                    (<= rnd 5) (= dx  1)
+                    (<= rnd 8) (= dx  0)
+                    (<= rnd 9) (= dx -1)
+                )
+            )
+            (streq type "dying") (do
+                ; Trend equal (dx = [-3, 3])
+                (= dx (- (rand 7) 3))
+            )
+            (do
+                ; Trend equal (dx = [-1, 1])
+                (= dx (- (rand 3) 1))
+            )
+        )
+
+        ; Re-branch
+        (if (< branches max-branches)
+            (if
+                ; Branch is dead
+                (< life 3)
+                    (queue x y "dead" life)
+
+                ; Branch is dying and needs to branch into leaves
+                (and (or (streq type "trunk") (strstart type "shoot")) (< life (+ multiplier 2)))
+                    (queue x y "dying" life)
+
+                ; Re-branch again
+                (and (streq type "trunk") (< life (- life-start 8))
+                     (or (is (rand (- 16 multiplier)) 0)
+                         (and (is (% life 5) 0) (> life 5))))
+                    (if 
+                        ; If the trunk is splitting and it's not about to die, give it a
+                        ; chance to create another trunk
+                        (and (is (rand 3) 0) (> life 7))
+                            (queue x y "trunk" life)
+
+                        ; Create a new shoot
+                        (< shoots max-shoots) (do
+                            ; Give the shoot new life
+                            (let new-life (- (+ life multiplier) 2))
+                            (if (< new-life 0) (= new-life 0))
+
+                            (= last-shoot (if
+                                ; Randomly direct the first shoot
+                                (is shoots 0)
+                                    (if (is (rand 2) 0) "shoot-left" "shoot-right")
+
+                                ; Later shoots alternate from the last
+                                (if (streq last-shoot "shoot-left") "shoot-right" "shoot-left")
+                            ))
+
+                            (queue x y last-shoot new-life)
+                            (= shoots (+ shoots 1))
+                        )
+                    )
+            )
+        )
+
+        (= x (+ x dx))
+        (= y (+ y dy))
+
+        ; Choose color
+        (if
+            (strstart type "trunk") (color (+ 2 (rand 2)))
+            (strstart type "shoot") (color (+ 2 (rand 2)))
+            (strstart type "dying") (color 4)
+            (strstart type "dead")  (color 5)
+        )
+
+        ; Choose branch characters
+        (let chars nil)
+        (if
+            (strstart type "trunk") (do
+                (if
+                    (<  dx  0) (= chars '("\\"))
+                    (is dx  0) (= chars '("/" "|"))
+                    (<   0 dx) (= chars '("/"))
+                )
+
+                ; Not growing?
+                (if (is dy 0) (= chars '("/" "~")))
+            )
+            (strstart type "shoot") (do
+                (if
+                    (< dx -1) (= chars '("\\" "|"))
+                    (< dx  0) (= chars '("/" "|"))
+                    (< dx  3) (= chars '("/"))
+                )
+
+                ; Are we growing down/not growing?
+                (if (or (is dy 0) (< 0 dy))
+                    (if
+                        (streq type "shoot-left")
+                            (= chars (if (is dy 0) '("\\" "_") '("/")))
+                        (streq type "shoot-right")
+                            (= chars (if (is dy 0) '("/" "_") '("\\")))
+                    )
+                )
+            )
+        )
+
+        (if (< life 4) (= chars leaf-chars))
+
+        (each (fn (ch i)
+            (let new-x (+ x i))
+            (put new-x y ch)
+        ) chars)
+    )
+))
+
+(= > (fn (a b)
+    (< b a)
+))
+    
+(= each (fn (f lst)
+    (let i 0)
+    (while lst
+        (f (car lst) i)
+        (= lst (cdr lst))
+        (= i (+ i 1))
+    )
+))
+
+(= nth (fn (lst n)
+    (if (is n 0)
+        (car lst)
+        (nth (cdr lst) (- n 1))
+    )
+))
+
+(= load-palette (fn (data)
+    (let i 0)
+    (while data (do
+        (poke (+ 0x4000 (+ (* i 4) 0)) (nth (car (cdr (car data))) 2))
+        (poke (+ 0x4000 (+ (* i 4) 1)) (nth (car (cdr (car data))) 1))
+        (poke (+ 0x4000 (+ (* i 4) 2)) (nth (car (cdr (car data))) 0))
+        (= data (cdr data))
+        (= i (+ i 1))
+    ))
+))
+
+(= load-sprites (fn (data)
+    (let i (* 33 7 7)) ; start from "A" offset
+    (while data (do
+        (poke (+ 0x4040 i) (car data))
+        (= data (cdr data))
+        (= i (+ i 1))
+    ))
+))
