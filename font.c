@@ -602,8 +602,8 @@ char font[96 * FONT_HEIGHT][FONT_WIDTH] = {
 	"x....x.",
 	".xxxx..",
 	// k
-	".......",
 	"x......",
+	"x...x..",
 	"x...x..",
 	"xxxx...",
 	"x...x..",
