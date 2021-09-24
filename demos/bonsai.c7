@@ -6,20 +6,12 @@
 (= scale 2)
 
 (= leaf-chars '("a" "b" "c"))
-(= base '(" (_____) " "(       )" "(         )"))
+(= base '("(_____)" "(       )" "(         )"))
 (= base-height 2)
 
 (= life-start    35)
 (= multiplier     5)
 (= last-shoot    "")
-
-(= steps 0)
-(= branches 0)
-(= shoots   0)
-(= max-branches (* multiplier 110))
-(= max-shoots   multiplier)
-
-(= stack (list))
 
 (= palette '(
     '(0x04 0x0B 0x01)
@@ -31,17 +23,31 @@
 ))
 
 (= init (fn ()
+    (= steps        0)
+    (= branches     0)
+    (= shoots       0)
+    (= max-branches (* multiplier 110))
+    (= max-shoots   multiplier)
+    (= stack        (list))
+
+    (load-palette palette)
+
+    (fill 0 0 width height " ")
+
+    (color 1)
     (each (fn (base i)
         (let x (- (/ width 2) (/ (strlen base) 2)))
         (let y (- height (+ i 1)))
         (put x y base)
     ) base)
 
-    (load-palette palette)
-
     (let x (// width 2))
     (let y (- height (+ base-height 1)))
     (queue x y "trunk" life-start)
+))
+
+(= keyup (fn (k)
+    (if (is k "r") (init))
 ))
 
 (= step (fn ()
