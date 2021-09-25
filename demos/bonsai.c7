@@ -2,7 +2,7 @@
 
 (= title "Bonsai")
 (= width  40)
-(= height 40)
+(= height 45)
 (= scale 2)
 
 (= leaf-chars (list
@@ -18,8 +18,8 @@
 (= potting "---------")
 (= base-height 3)
 
-(= life-start  35)
-(= multiplier   5)
+(= life-start  42)
+(= multiplier   6)
 (= last-shoot  "")
 
 (= palette (list 
