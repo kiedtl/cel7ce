@@ -2,7 +2,7 @@
 
 (= title "Trees! Trees! I've decided all I care about are trees!")
 (= width  40)
-(= height 45)
+(= height 40)
 (= scale 2)
 
 (= leaf-chars (list
@@ -13,12 +13,12 @@
     (list "Y")
     (list "&")
 ))
-(= leaf-chars-len 4)
-(= base (list "(_____)" "(       )" "(         )"))
-(= potting "---------")
+(= leaf-chars-len 6)
+(= base (list "(_______)" "(         )" "(           )"))
+(= potting "-----------")
 (= base-height 3)
 
-(= life-start  42)
+(= life-start  35)
 (= multiplier   6)
 (= last-shoot  "")
 
@@ -81,6 +81,16 @@
         0 0 1 0 0 0 0
         0 1 0 0 0 0 0
         1 0 0 0 0 0 0
+    )
+    (list 
+        "_"
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        1 1 1 1 1 1 1
     )
 ))
 
@@ -228,7 +238,7 @@
                 )
             )
             (is type "shoot-right") (do
-                ; Trend left (dx = [-1, 2])
+                ; Trend right (dx = [-1, 2])
                 (let rnd (rand 10))
                 (if
                     (<= rnd 1) (= dx  2)
@@ -325,21 +335,28 @@
                 (if (or (is dy 0) (< 0 dy))
                     (if
                         (is type "shoot-left")
-                            (= chars (if (is dy 4) (list "\\" "_") (list "/")))
+                            (= chars (if (is dy 0) (list "\\" "_") (list "/")))
                         (is type "shoot-right")
-                            (= chars (if (is dy 4) (list "/" "_") (list "\\")))
+                            (= chars (if (is dy 0) (list "/" "_") (list "\\")))
                     )
                 )
             )
         )
 
-        (if (< life 4)
-            (= chars (nth leaf-chars (rand leaf-chars-len))))
-
-        (each (fn (ch i)
+        (let i 0)
+        (each (fn (ch)
             (let new-x (+ x i))
             (put new-x y ch)
+            (= i (+ i 1))
         ) chars)
+
+        (if (< life 4)
+            (each (fn (leaf-char)
+                (let new-x (+ x i))
+                (put new-x y leaf-char)
+                (= i (+ i 1))
+            ) (nth leaf-chars (rand leaf-chars-len)))
+        )
     )
 ))
 
