@@ -8,14 +8,15 @@
 (= leaf-chars (list
     (list "&")
     (list "&" "&")
-    (list "Z" "X" "Y")
-    (list "&" "&")
+    (list "X" "Z")
+    (list "Z")
+    (list "Y")
     (list "&")
 ))
 (= leaf-chars-len 4)
 (= base (list "(_____)" "(       )" "(         )"))
 (= potting "---------")
-(= base-height 2)
+(= base-height 3)
 
 (= life-start  35)
 (= multiplier   5)
@@ -109,13 +110,13 @@
     (color 4)
     (do
         (let x (- (/ width 2) (/ (strlen potting) 2)))
-        (let y (- height (+ base-height 1)))
+        (let y (- height base-height))
         (put x y potting)
     )
 
     ; Initialize growing in middle of screen
     (let x (// width 2))
-    (let y (- height (+ base-height 1)))
+    (let y (- height base-height))
     (queue x y "trunk" life-start)
 ))
 
@@ -335,13 +336,9 @@
         (if (< life 4)
             (= chars (nth leaf-chars (rand leaf-chars-len))))
 
-        (= i 0)
-        (each (fn (ch)
-            (if (< (rand 10) 8) (do
-                (let new-x (+ x i))
-                (put new-x y ch)
-            ))
-            (= i (+ i 1))
+        (each (fn (ch i)
+            (let new-x (+ x i))
+            (put new-x y ch)
         ) chars)
     )
 ))
