@@ -78,18 +78,26 @@ fe_color(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_put(fe_Context *ctx, fe_Object *arg)
 {
-	size_t x = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
-	size_t y = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
-
 	char buf[4096] = {0};
-	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
 
-	for (size_t i = 0; i < sz && (x + i) < config.width; ++i) {
-		size_t coord = y * config.width + (x + i);
-		size_t addr = DISPLAY_START + (coord * 2);
-		memory[addr + 0] = buf[i];
-		memory[addr + 1] = color;
-	}
+	size_t sx = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+	size_t sy = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+
+	fe_Object *str = NULL;
+	size_t x = sx;
+
+	do {
+		str = fe_nextarg(ctx, &arg);
+		size_t sz = fe_tostring(ctx, str, (char *)&buf, sizeof(buf));
+
+		for (size_t i = 0; i < sz && x < config.width; ++i, ++x) {
+			size_t coord = sy * config.width + x;
+			size_t addr = DISPLAY_START + (coord * 2);
+			memory[addr + 0] = buf[i];
+			memory[addr + 1] = color;
+		}
+
+	} while (fe_type(ctx, arg) == FE_TPAIR);
 
 	return fe_bool(ctx, 0);
 }
