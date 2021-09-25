@@ -9,13 +9,12 @@
     (list "&")
     (list "&" "&")
     (list "Z" "X" "Y")
-    (list "@" "O" "C")
-    (list "&" "&" "@")
     (list "&" "&")
     (list "&")
 ))
 (= leaf-chars-len 4)
 (= base (list "(_____)" "(       )" "(         )"))
+(= potting "---------")
 (= base-height 2)
 
 (= life-start  35)
@@ -95,15 +94,26 @@
     (load-palette palette)
     (load-sprites sprites)
 
+    ; Clear screen
     (fill 0 0 width height " ")
 
-    (color 1)
-    (each (fn (base i)
-        (let x (- (/ width 2) (/ (strlen base) 2)))
+    ; Draw pot
+    (color 14)
+    (each (fn (line i)
+        (let x (- (/ width 2) (/ (strlen line) 2)))
         (let y (- height (+ i 1)))
-        (put x y base)
+        (put x y line)
     ) base)
 
+    ; Draw potting
+    (color 4)
+    (do
+        (let x (- (/ width 2) (/ (strlen potting) 2)))
+        (let y (- height (+ base-height 1)))
+        (put x y potting)
+    )
+
+    ; Initialize growing in middle of screen
     (let x (// width 2))
     (let y (- height (+ base-height 1)))
     (queue x y "trunk" life-start)
