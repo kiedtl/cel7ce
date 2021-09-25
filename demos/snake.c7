@@ -1,3 +1,5 @@
+; (c) 2020 rxi
+
 (= title "Snake")
 (= width 15)
 (= height 15)

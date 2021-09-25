@@ -1,3 +1,9 @@
+; This file was ported from jallbrit's bonsai.sh script, with very few major changes:
+; - https://gitlab.com/jallbrit/bonsai.sh
+;
+; (c) Kiëd Llaentenn, jallbrit
+; This file is licensed under the GPL v3 license.
+;
 ; vim: ts=4 sts=4 sw=4 expandtab
 
 (= title "Trees! Trees! I've decided all I care about are trees!")

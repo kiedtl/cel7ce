@@ -1,3 +1,5 @@
+; (c) 2020 rxi
+
 (= title "Hello World!")
 (= scale 7)
 (= width 16)

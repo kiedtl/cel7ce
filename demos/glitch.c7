@@ -1,3 +1,5 @@
+; (c) 2020 rxi
+
 (= title "Glitch")
 (= step (fn ()
     (let i 0)

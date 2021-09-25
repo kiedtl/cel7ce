@@ -1,3 +1,5 @@
+; (c) 2020 rxi
+
 (= title "Maze")
 (= i 0)
 (= step (fn ()
