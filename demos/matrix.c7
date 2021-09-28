@@ -1,0 +1,101 @@
+; vim: ts=4 sts=4 sw=4 expandtab
+
+(= title "Matrix")
+(= width  80)
+(= height 80)
+(= scale 1)
+
+(= steps 0)
+; format: <trail> <x> <y>
+(= drops (list))
+
+(= palette (list 
+    (list 0x01 0x03 0x02)
+    (list 0xDD 0xFF 0xEE)
+    (list 0x25 0xAA 0x02)
+))
+
+(= init (fn ()
+    (load-palette palette)
+    (= drops (cons (list (+ 3 (rand 5)) (rand width) 0) drops))
+))
+
+(= step (fn ()
+    (let prospective (rand width))
+    (let prospective-occupied nil)
+
+    (let newdrops (list))
+
+    (each (fn (drop)
+        (let trail (nth drop 0))
+        (let x (nth drop 1))
+        (let y (nth drop 2))
+
+        (if (and (is prospective x) (< (- y trail) (* height 0.7)))
+            (= prospective-occupied t)
+        )
+
+        (if (< (- y trail) height) (do
+            (let newch (+ 33 (rand 94)))
+            (let newy (+ y 1))
+            (let oldy y)
+            (let lasty (- y trail))
+
+            (if (< newy height) (do
+                (put x newy (num->char newch))
+                (poke (+ 0x52a0 (* (+ (*  newy width) x) 2) 1) 0x01)
+            ))
+
+            (if (< oldy height)
+                (poke (+ 0x52a0 (* (+ (*  oldy width) x) 2) 1) 0x02)
+            )
+
+            (put x lasty " ")
+
+            (= newdrops (cons (list trail x newy) newdrops))
+        ))
+    ) drops)
+
+    (= drops newdrops)
+
+    (if (and (is (% steps 2) 0) (not prospective-occupied))
+        (= drops (cons (list (+ 7 (rand height)) prospective 0) drops))
+    )
+
+    (= steps (+ steps 1))
+))
+
+(= >= (fn (a b)
+    (<= b a)
+))
+
+(= > (fn (a b)
+    (< b a)
+))
+
+(= nth (fn (lst n)
+    (if (is n 0)
+        (car lst)
+        (nth (cdr lst) (- n 1))
+    )
+))
+
+(= each (fn (f lst)
+    (let i 0)
+    (while lst
+        (f (car lst) i)
+        (= lst (cdr lst))
+        (= i (+ i 1))
+    )
+))
+
+(= load-palette (fn (data)
+    (let i 0)
+    (while data (do
+        (poke (+ 0x4000 (+ (* i 4) 0)) (nth (car data) 2))
+        (poke (+ 0x4000 (+ (* i 4) 1)) (nth (car data) 1))
+        (poke (+ 0x4000 (+ (* i 4) 2)) (nth (car data) 0))
+        (= data (cdr data))
+        (= i (+ i 1))
+    ))
+))
