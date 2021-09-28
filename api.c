@@ -175,6 +175,14 @@ fe_ch2num(fe_Context *ctx, fe_Object *arg)
 }
 
 static fe_Object *
+fe_num2ch(fe_Context *ctx, fe_Object *arg)
+{
+	uint8_t num = (uint8_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+	char buf[2] = {num, 0};
+	return fe_string(ctx, buf);
+}
+
+static fe_Object *
 fe_username(fe_Context *ctx, fe_Object *arg)
 {
 	UNUSED(arg);
@@ -183,7 +191,7 @@ fe_username(fe_Context *ctx, fe_Object *arg)
 	return fe_string(ctx, u);
 }
 
-const struct ApiFunc fe_apis[15] = {
+const struct ApiFunc fe_apis[16] = {
 	{        "//",    fe_divide },
 	{         "%",   fe_modulus },
 	{      "quit",      fe_quit },
@@ -198,5 +206,6 @@ const struct ApiFunc fe_apis[15] = {
 	{  "strstart",  fe_strstart },
 	{     "strat",     fe_strat },
 	{ "char->num",    fe_ch2num },
+	{ "num->char",    fe_num2ch },
 	{  "username",  fe_username },
 };

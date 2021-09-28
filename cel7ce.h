@@ -45,7 +45,7 @@ extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
-extern const struct ApiFunc fe_apis[15];
+extern const struct ApiFunc fe_apis[16];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);
 
