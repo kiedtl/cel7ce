@@ -1,0 +1,22 @@
+; vim: ts=4 sts=4 sw=4 expandtab
+
+(= title "cel7ce")
+(= width 16)
+(= height 8)
+
+(= init (fn ()
+    (color 2)
+    (put 04 2 "(")
+    (color 1)
+    (put 05 2 "cel7")
+    (color 6)
+    (put 09 2 "ce")
+    (color 14)
+    (put 11 2 ")")
+
+    (color 1)
+    (put 2 4 "no cartridge")
+    (put 2 5 "  inserted") 
+))
+
+(= step (fn ()))

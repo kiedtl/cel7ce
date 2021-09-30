@@ -1,9 +1,18 @@
-#include <stdint.h>
-#include <string.h>
+#if defined(_WIN32) || defined(__WIN32__)
+#include <windows.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
+
+#include <err.h>
+#include <SDL.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <SDL.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <time.h>
+
 #include "fe.h"
 #include "cel7ce.h"
 
@@ -95,8 +104,16 @@ deinit_fe(void)
 	free(fe_ctx_data);
 }
 
-uint32_t _sdl_tick(uint32_t interval, void *param);
-uint32_t
+static char
+_fe_read(fe_Context *ctx, void *udata)
+{
+	UNUSED(ctx);
+	char c = **(char **)udata;
+	(*(char **)udata)++;
+	return c;
+}
+
+static uint32_t
 _sdl_tick(uint32_t interval, void *param)
 {
 	SDL_Event ev;
@@ -156,13 +173,57 @@ deinit_sdl(void)
 }
 
 static void
-load(char *filename)
+load(char *user_filename)
 {
-	FILE *fp = fopen(filename, "rb");
-	ssize_t gc = fe_savegc(fe_ctx);
+	bool fileisbin = false;
+	char filename[4096] = {0};
 
+	if (user_filename == NULL) {
+		fileisbin = true;
+
+#if defined(__linux__)
+		readlink("/proc/self/exe", filename, ARRAY_LEN(filename));
+#elif defined(_WIN32) || defined(__WIN32__)
+		LPWSTR tbuffer[4096];
+		DWORD sz = GetModuleFileName(NULL, tbuffer, ARRAY_LEN(tbuffer));
+		if (sz == 0) { // error
+			switch (GetLastError()) {
+			break; case ERROR_INSUFFICIENT_BUFFER:
+				errx(1, "Couldn't get path to executable: path too large");
+			break; case ERROR_SUCCESS: default:
+				errx(1, "Couldn't get path to executable: unknown error");
+			break;
+			}
+		}
+		wcstombs(filename, tbuffer, sz);
+#else
+		errx(1, "No cartridge or file provided.");
+#endif
+	} else {
+		strncpy(filename, user_filename, ARRAY_LEN(filename));
+		filename[ARRAY_LEN(filename) - 1] = '\0';
+	}
+
+	struct stat st;
+	ssize_t stat_res = stat(filename, &st);
+	if (stat_res == -1) err(1, "Cannot stat file '%s'", filename);
+
+	char *filebuf = calloc(st.st_size, sizeof(char));
+	FILE *fp = fopen(filename, "rb");
+	fread(filebuf, st.st_size, sizeof(char), fp);
+	fclose(fp);
+
+	char *start = filebuf;
+	if (fileisbin) {
+		size_t last0 = 0;
+		for (size_t i = 0; i < st.st_size; ++i)
+			if (filebuf[i] == '\0') last0 = i;
+		start = &filebuf[last0 + 1];
+	}
+
+	ssize_t gc = fe_savegc(fe_ctx);
 	while (true) {
-		fe_Object *obj = fe_readfp(fe_ctx, fp);
+		fe_Object *obj = fe_read(fe_ctx, _fe_read, (void *)&start);
 
 		// break if there's nothing left to read
 		if (!obj) break;
@@ -173,9 +234,6 @@ load(char *filename)
 		// and result
 		fe_restoregc(fe_ctx, gc);
 	}
-
-	fclose(fp);
-
 	gc = fe_savegc(fe_ctx);
 
 	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"))) == FE_TSTRING) {

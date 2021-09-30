@@ -26,9 +26,11 @@ all: $(NAME)
 	@printf "    %-8s%s\n" "CC" $@
 	$(CMD)$(CC) -o $@ -c $< $(CFLAGS)
 
-$(NAME): main.c $(OBJ)
+$(NAME): main.c $(OBJ) def.c7
 	@printf "    %-8s%s\n" "CCLD" $@
-	$(CMD)$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+	$(CMD)$(CC) -o $@ main.c $(OBJ) $(CFLAGS) $(LDFLAGS)
+	$(CMD)printf '\0' >> $(NAME)
+	$(CMD)cat def.c7 >> $(NAME)
 
 .PHONY: clean
 clean:
