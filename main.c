@@ -4,8 +4,10 @@
 #include <unistd.h>
 #endif
 
+#include <assert.h>
 #include <err.h>
 #include <SDL.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -48,6 +50,65 @@ bool quit = false;
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Texture *texture = NULL;
+
+static void
+call_func(const char *fnname, const char *arg_fmt, ...)
+{
+	size_t argc = strlen(arg_fmt);
+	va_list ap;
+	va_start(ap, arg_fmt);
+
+	if (mode == M_Fe) {
+		fe_Object *fnsym = fe_symbol(fe_ctx, fnname);
+		if (fe_type(fe_ctx, fe_eval(fe_ctx, fnsym)) == FE_TFUNC) {
+			int gc = fe_savegc(fe_ctx);
+
+			fe_Object **objs = calloc(argc + 1, sizeof(fe_Object *));
+			objs[0] = fnsym;
+
+			for (size_t i = 0; i < argc; ++i) {
+				switch (arg_fmt[i]) {
+				break; case 's': {
+					objs[i + 1] = fe_string(fe_ctx, va_arg(ap, void *));
+				} break; default: {
+					assert(false);
+				} break;
+				}
+			}
+
+			fe_eval(fe_ctx, fe_list(fe_ctx, objs, argc + 1));
+			free(objs);
+			fe_restoregc(fe_ctx, gc);
+		}
+	} else {
+		JanetSymbol j_sym = janet_csymbol(fnname);
+		JanetBinding j_binding = janet_resolve_ext(janet_env, j_sym);
+		if (j_binding.type != JANET_BINDING_NONE) {
+			if (!janet_checktype(j_binding.value, JANET_FUNCTION)) {
+				janet_panicf("Binding '%s' must be a function", fnname);
+			}
+
+			Janet *args = calloc(argc, sizeof(Janet));
+			for (size_t i = 0; i < argc; ++i) {
+				switch (arg_fmt[i]) {
+				break; case 's': {
+					char *str = va_arg(ap, void *);
+					args[i] = janet_wrap_string(janet_string((const uint8_t *)str, strlen(str)));
+				} break; default: {
+					assert(false);
+				} break;
+				}
+			}
+
+			JanetFunction *j_fn = janet_unwrap_function(j_binding.value);
+			Janet out;
+			janet_pcall(j_fn, argc, args, &out, NULL);
+			free(args);
+		}
+	}
+
+	va_end(ap);
+}
 
 static void
 get_string_global(char *name, char *buf, size_t sz)
@@ -425,30 +486,7 @@ keyname(size_t kcode)
 static void
 run(void)
 {
-	if (mode == M_Fe) {
-		fe_Object *initfn = fe_symbol(fe_ctx, "init");
-		if (fe_type(fe_ctx, fe_eval(fe_ctx, initfn)) == FE_TFUNC) {
-			ssize_t gc = fe_savegc(fe_ctx);
-			fe_Object *objs[1];
-			objs[0] = initfn;
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, 1));
-			fe_restoregc(fe_ctx, gc);
-		}
-	} else {
-		JanetSymbol j_initsym = janet_csymbol("init");
-		JanetBinding j_initbind = janet_resolve_ext(janet_env, j_initsym);
-		if (j_initbind.type != JANET_BINDING_NONE) {
-			if (!janet_checktype(j_initbind.value, JANET_FUNCTION)) {
-				janet_panicf("Init binding must be a function");
-			}
-
-			JanetTuple j_argv_tuple = janet_tuple_n(NULL, 0);
-			Janet j_argv = janet_wrap_tuple(j_argv_tuple);
-			JanetFunction *j_initfn = janet_unwrap_function(j_initbind.value);
-			Janet out;
-			janet_pcall(j_initfn, 0, &j_argv, &out, NULL);
-		}
-	}
+	call_func("init", "");
 
 	SDL_Event ev;
 
@@ -458,31 +496,7 @@ run(void)
 			quit = true;
 		} break; case SDL_KEYDOWN: {
 			ssize_t kcode = ev.key.keysym.sym;
-			if (mode == M_Fe) {
-				if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keydown"))) == FE_TFUNC) {
-					int gc = fe_savegc(fe_ctx);
-					fe_Object *objs[2];
-					objs[0] = fe_symbol(fe_ctx, "keydown");
-					objs[1] = fe_string(fe_ctx, keyname(kcode));
-					fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
-					fe_restoregc(fe_ctx, gc);
-				}
-			} else {
-				JanetSymbol j_sym = janet_csymbol("keydown");
-				JanetBinding j_binding = janet_resolve_ext(janet_env, j_sym);
-				if (j_binding.type != JANET_BINDING_NONE) {
-					if (!janet_checktype(j_binding.value, JANET_FUNCTION)) {
-						janet_panicf("keydown binding must be a function");
-					}
-
-					Janet j_keyname = janet_wrap_string(keyname(kcode));
-					JanetTuple j_argv_tuple = janet_tuple_n(&j_keyname, 0);
-					Janet j_argv = janet_wrap_tuple(j_argv_tuple);
-					JanetFunction *j_fn = janet_unwrap_function(j_binding.value);
-					Janet out;
-					janet_pcall(j_fn, 1, &j_argv, &out, NULL);
-				}
-			}
+			call_func("keydown", "s", keyname(kcode));
 		} break; case SDL_KEYUP: {
 			ssize_t kcode = ev.key.keysym.sym;
 
@@ -490,57 +504,11 @@ run(void)
 			break; case SDLK_ESCAPE:
 				quit = true;
 			break; default: {
-				if (mode == M_Fe) {
-					if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keyup"))) == FE_TFUNC) {
-						int gc = fe_savegc(fe_ctx);
-						fe_Object *objs[2];
-						objs[0] = fe_symbol(fe_ctx, "keyup");
-						objs[1] = fe_string(fe_ctx, keyname(kcode));
-						fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
-						fe_restoregc(fe_ctx, gc);
-					}
-				} else {
-					JanetSymbol j_sym = janet_csymbol("keyup");
-					JanetBinding j_binding = janet_resolve_ext(janet_env, j_sym);
-					if (j_binding.type != JANET_BINDING_NONE) {
-						if (!janet_checktype(j_binding.value, JANET_FUNCTION)) {
-							janet_panicf("keyup binding must be a function");
-						}
-
-						Janet j_keyname = janet_wrap_string(keyname(kcode));
-						JanetFunction *j_fn = janet_unwrap_function(j_binding.value);
-						Janet out;
-						janet_pcall(j_fn, 1, &j_keyname, &out, NULL);
-					}
-				}
+				call_func("keyup", "s", keyname(kcode));
 			} break;
 			}
 		} break; case SDL_USEREVENT: {
-			if (mode == M_Fe) {
-				fe_Object *stepfn = fe_symbol(fe_ctx, "step");
-				if (fe_type(fe_ctx, fe_eval(fe_ctx, stepfn)) == FE_TFUNC) {
-					int gc = fe_savegc(fe_ctx);
-					fe_Object *objs[1];
-					objs[0] = stepfn;
-					fe_eval(fe_ctx, fe_list(fe_ctx, objs, 1));
-					fe_restoregc(fe_ctx, gc);
-				}
-			} else {
-				JanetSymbol j_stepsym = janet_csymbol("step");
-				JanetBinding j_stepdef = janet_resolve_ext(janet_env, j_stepsym);
-				if (j_stepdef.type != JANET_BINDING_NONE) {
-					if (!janet_checktype(j_stepdef.value, JANET_FUNCTION)) {
-						janet_panicf("Step binding must be a function");
-					}
-
-					JanetTuple j_argv_tuple = janet_tuple_n(NULL, 0);
-					Janet j_argv = janet_wrap_tuple(j_argv_tuple);
-					JanetFunction *j_fn = janet_unwrap_function(j_stepdef.value);
-					Janet out;
-					janet_pcall(j_fn, 0, &j_argv, &out, NULL);
-				}
-			}
-
+			call_func("step", "");
 			draw();
 
 			// Flush user events that may have accumulated if step()

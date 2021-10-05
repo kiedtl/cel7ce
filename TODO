@@ -1,19 +1,22 @@
-- Show errors on display
-- Create default ROM that has LOAD/repl commands?
-- ESC menu (as with TIC-80?)
-  - view source
-  - view info (author, date, etc)
-  - go back to repl
-- Consider adding a form of persistent storage and use for storing
-  highscores in snake demo
-- Cartridge format (gif? png?)
-- Don't crash when step() isn't defined
-- Test on Windows
-- Mouse clicks/scrolls?
 - Janet support
   - Find out why janet_def for string isn't working
   - Ensure returned JanetSignal's are handled properly
   - Remove duplicated code between Janet/Fe APIs
     - Should combine files?
   - Lock down Janet's OS module?
+  - Improve Janet docs
+    - Note that one must call janet_string before janet_wrap_string
+    - Document janet_def and janet_resolve
+- Test on Windows
 - Support -debug flag
+- Show errors on display
+- Create default ROM that has LOAD/repl commands?
+- ESC menu (as with TIC-80?)
+  - view source
+  - view info (author, date, etc)
+  - go back to repl
+- Nice splash screen
+- Cartridge format (gif? png?)
+  - Consider adding a form of persistent storage on the cartridge
+    and use for storing highscores in snake demo
+- Mouse clicks/scrolls?
