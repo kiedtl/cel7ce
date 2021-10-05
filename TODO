@@ -1,10 +1,19 @@
-- Support single-file-by-appending-script-to-executable trick
 - Show errors on display
-- Write Mandelbrot demos
-- Vector and Table library
 - Create default ROM that has LOAD/repl commands?
+- ESC menu (as with TIC-80?)
+  - view source
+  - view info (author, date, etc)
+  - go back to repl
 - Consider adding a form of persistent storage and use for storing
   highscores in snake demo
 - Cartridge format (gif? png?)
 - Don't crash when step() isn't defined
 - Test on Windows
+- Mouse clicks/scrolls?
+- Janet support
+  - Find out why janet_def for string isn't working
+  - Ensure returned JanetSignal's are handled properly
+  - Remove duplicated code between Janet/Fe APIs
+    - Should combine files?
+  - Lock down Janet's OS module?
+- Support -debug flag

@@ -13,8 +13,9 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "fe.h"
 #include "cel7ce.h"
+#include "fe.h"
+#include "janet.h"
 
 static uint32_t colors[] = {
 	0x0b0c0d, 0xf7f7e6, 0xf71467, 0xfd971f,
@@ -31,10 +32,15 @@ struct Config config = {
 	.debug = false,
 };
 
+enum Mode {
+	M_Fe, M_Janet
+} mode = M_Fe;
+
 uint8_t *memory = NULL;
 size_t memory_sz = 0;
 size_t color = 1;
 
+JanetTable *janet_env;
 void *fe_ctx_data = NULL;
 fe_Context *fe_ctx = NULL;
 bool quit = false;
@@ -44,39 +50,72 @@ SDL_Renderer *renderer = NULL;
 SDL_Texture *texture = NULL;
 
 static void
-init_fe(void)
+get_string_global(char *name, char *buf, size_t sz)
 {
-	fe_ctx_data = malloc(FE_CTX_DATA_SIZE);
-	fe_ctx = fe_open(fe_ctx_data, FE_CTX_DATA_SIZE);
+	if (mode == M_Fe) {
+		ssize_t gc = fe_savegc(fe_ctx);
+		fe_Object *var = fe_eval(fe_ctx, fe_symbol(fe_ctx, name));
+		if (fe_type(fe_ctx, var) == FE_TSTRING) {
+			fe_tostring(fe_ctx, var, buf, sz);
+		} else {
+			// TODO: error
+		}
+		fe_restoregc(fe_ctx, gc);
+	} else if (mode == M_Janet) {
+		JanetSymbol j_namesym = janet_symbol((uint8_t *)name, strlen(name));
+		JanetBinding j_binding = janet_resolve_ext(janet_env, j_namesym);
 
-	for (size_t i = 0; i < ARRAY_LEN(fe_apis); ++i) {
-		fe_set(
-			fe_ctx,
-			fe_symbol(fe_ctx, fe_apis[i].name),
-			fe_cfunc(fe_ctx, fe_apis[i].func)
-		);
+		if (j_binding.type == JANET_BINDING_NONE) {
+			janet_panicf("Global '%s' not set", name);
+		} else if (j_binding.type != JANET_BINDING_DEF
+				&& j_binding.type != JANET_BINDING_VAR) {
+			janet_panicf("Global '%s' must be a string definition", name);
+		} else {
+			if (!janet_checktype(j_binding.value, JANET_STRING)) {
+				janet_panicf("Global '%s' must be a string", name);
+			}
+
+			const char *str = (char *)janet_unwrap_string(j_binding.value);
+			strncpy(buf, str, sz);
+		}
 	}
+}
 
-	// Set default values of variables
-	{
-		fe_Object *objs[3];
+static float
+get_number_global(char *name)
+{
+	if (mode == M_Fe) {
+		ssize_t gc = fe_savegc(fe_ctx);
+		fe_Object *var = fe_eval(fe_ctx, fe_symbol(fe_ctx, name));
+		if (fe_type(fe_ctx, var) == FE_TNUMBER) {
+			return fe_tonumber(fe_ctx, var);
+		} else {
+			// TODO: error
+			return 0;
+		}
+		fe_restoregc(fe_ctx, gc);
+	} else if (mode == M_Janet) {
+		JanetSymbol j_namesym = janet_symbol((uint8_t *)name, strlen(name));
+		JanetBinding j_binding = janet_resolve_ext(janet_env, j_namesym);
 
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "width");
-		objs[2] = fe_number(fe_ctx, config.width);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+		if (j_binding.type == JANET_BINDING_NONE) {
+			janet_panicf("Global '%s' not set", name);
+		} else if (j_binding.type != JANET_BINDING_DEF
+				&& j_binding.type != JANET_BINDING_VAR) {
+			janet_panicf("Global '%s' must be a number definition", name);
+		} else {
+			if (!janet_checktype(j_binding.value, JANET_NUMBER)) {
+				janet_panicf("Global '%s' must be a number", name);
+			}
 
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "height");
-		objs[2] = fe_number(fe_ctx, config.height);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+			return janet_unwrap_number(j_binding.value);
+		}
+	} else return 0;
+}
 
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "scale");
-		objs[2] = fe_number(fe_ctx, config.scale);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-	}
-
+static void
+init_mem(void)
+{
 	memory_sz = DISPLAY_START + (500 * 500);
 	memory = malloc(memory_sz);
 	memset(memory, 0x0, memory_sz);
@@ -95,13 +134,24 @@ init_fe(void)
 			memory[FONT_START + (i * FONT_WIDTH) + j] = ch;
 		}
 	}
+
 }
 
 static void
-deinit_fe(void)
+deinit_mem(void)
 {
-	fe_close(fe_ctx);
-	free(fe_ctx_data);
+	free(memory);
+}
+
+static void
+deinit_vm(void)
+{
+	if (mode == M_Fe) {
+		fe_close(fe_ctx);
+		free(fe_ctx_data);
+	} else if (mode == M_Janet) {
+		janet_deinit();
+	}
 }
 
 static char
@@ -204,6 +254,16 @@ load(char *user_filename)
 		filename[ARRAY_LEN(filename) - 1] = '\0';
 	}
 
+
+	if (!fileisbin) {
+		char *dot = strrchr(filename, '.');
+		if (dot && !strcmp(dot, ".fe")) {
+			mode = M_Fe;
+		} else if (dot && !strcmp(dot, ".janet")) {
+			mode = M_Janet;
+		}
+	}
+
 	struct stat st;
 	ssize_t stat_res = stat(filename, &st);
 	if (stat_res == -1) err(1, "Cannot stat file '%s'", filename);
@@ -221,36 +281,80 @@ load(char *user_filename)
 		start = &filebuf[last0 + 1];
 	}
 
-	ssize_t gc = fe_savegc(fe_ctx);
-	while (true) {
-		fe_Object *obj = fe_read(fe_ctx, _fe_read, (void *)&start);
+	if (mode == M_Fe) {
+		fe_ctx_data = malloc(FE_CTX_DATA_SIZE);
+		fe_ctx = fe_open(fe_ctx_data, FE_CTX_DATA_SIZE);
 
-		// break if there's nothing left to read
-		if (!obj) break;
+		for (size_t i = 0; i < ARRAY_LEN(fe_apis); ++i) {
+			fe_set(
+				fe_ctx,
+				fe_symbol(fe_ctx, fe_apis[i].name),
+				fe_cfunc(fe_ctx, fe_apis[i].func)
+			);
+		}
 
-		fe_eval(fe_ctx, obj);
+		// Set default values of variables
+		{
+			fe_Object *objs[3];
 
-		// restore GC stack which now contains both read object
-		// and result
-		fe_restoregc(fe_ctx, gc);
+			objs[0] = fe_symbol(fe_ctx, "=");
+			objs[1] = fe_symbol(fe_ctx, "width");
+			objs[2] = fe_number(fe_ctx, config.width);
+			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+			objs[0] = fe_symbol(fe_ctx, "=");
+			objs[1] = fe_symbol(fe_ctx, "height");
+			objs[2] = fe_number(fe_ctx, config.height);
+			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+			objs[0] = fe_symbol(fe_ctx, "=");
+			objs[1] = fe_symbol(fe_ctx, "scale");
+			objs[2] = fe_number(fe_ctx, config.scale);
+			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+		}
+
+
+		ssize_t gc = fe_savegc(fe_ctx);
+		while (true) {
+			fe_Object *obj = fe_read(fe_ctx, _fe_read, (void *)&start);
+
+			// break if there's nothing left to read
+			if (!obj) break;
+
+			fe_eval(fe_ctx, obj);
+
+			// restore GC stack which now contains both read object
+			// and result
+			fe_restoregc(fe_ctx, gc);
+		}
+	} else {
+		janet_init();
+		janet_env = janet_core_env(NULL);
+		janet_cfuns(janet_env, "cel7", janet_apis);
+
+		// Set default values of variables
+		// TODO: set documentation
+		{
+			Janet j_title = janet_wrap_string(config.title);
+			janet_def(janet_env, "title", j_title, "");
+
+			Janet j_width = janet_wrap_number(config.width);
+			janet_def(janet_env, "width", j_width, "");
+
+			Janet j_height = janet_wrap_number(config.height);
+			janet_def(janet_env, "height", j_height, "");
+
+			Janet j_scale = janet_wrap_number(config.scale);
+			janet_def(janet_env, "scale", j_scale, "");
+		}
+
+		janet_dostring(janet_env, start, filename, NULL);
 	}
-	gc = fe_savegc(fe_ctx);
 
-	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"))) == FE_TSTRING) {
-		fe_Object *fe_title = fe_eval(fe_ctx, fe_symbol(fe_ctx, "title"));
-		fe_tostring(fe_ctx, fe_title, (char *)&config.title, sizeof(config.title));
-	}
-
-	fe_Object *fe_width = fe_eval(fe_ctx, fe_symbol(fe_ctx, "width"));
-	config.width = (size_t)fe_tonumber(fe_ctx, fe_width);
-
-	fe_Object *fe_height = fe_eval(fe_ctx, fe_symbol(fe_ctx, "height"));
-	config.height = (size_t)fe_tonumber(fe_ctx, fe_height);
-
-	fe_Object *fe_scale = fe_eval(fe_ctx, fe_symbol(fe_ctx, "scale"));
-	config.scale = (size_t)fe_tonumber(fe_ctx, fe_scale);
-
-	fe_restoregc(fe_ctx, gc);
+	get_string_global("title", config.title, ARRAY_LEN(config.title));
+	config.width = get_number_global("width");
+	config.height = get_number_global("height");
+	config.scale = get_number_global("scale");
 }
 
 static void
@@ -293,9 +397,9 @@ draw(void)
 	}
 
 	SDL_UnlockTexture(texture);
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, texture, NULL, NULL);
-        SDL_RenderPresent(renderer);
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, texture, NULL, NULL);
+	SDL_RenderPresent(renderer);
 }
 
 static const char *
@@ -321,12 +425,29 @@ keyname(size_t kcode)
 static void
 run(void)
 {
-	if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "init"))) == FE_TFUNC) {
-		int gc = fe_savegc(fe_ctx);
-		fe_Object *objs[1];
-		objs[0] = fe_symbol(fe_ctx, "init");
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, 1));
-		fe_restoregc(fe_ctx, gc);
+	if (mode == M_Fe) {
+		fe_Object *initfn = fe_symbol(fe_ctx, "init");
+		if (fe_type(fe_ctx, fe_eval(fe_ctx, initfn)) == FE_TFUNC) {
+			ssize_t gc = fe_savegc(fe_ctx);
+			fe_Object *objs[1];
+			objs[0] = initfn;
+			fe_eval(fe_ctx, fe_list(fe_ctx, objs, 1));
+			fe_restoregc(fe_ctx, gc);
+		}
+	} else {
+		JanetSymbol j_initsym = janet_csymbol("init");
+		JanetBinding j_initbind = janet_resolve_ext(janet_env, j_initsym);
+		if (j_initbind.type != JANET_BINDING_NONE) {
+			if (!janet_checktype(j_initbind.value, JANET_FUNCTION)) {
+				janet_panicf("Init binding must be a function");
+			}
+
+			JanetTuple j_argv_tuple = janet_tuple_n(NULL, 0);
+			Janet j_argv = janet_wrap_tuple(j_argv_tuple);
+			JanetFunction *j_initfn = janet_unwrap_function(j_initbind.value);
+			Janet out;
+			janet_pcall(j_initfn, 0, &j_argv, &out, NULL);
+		}
 	}
 
 	SDL_Event ev;
@@ -337,13 +458,30 @@ run(void)
 			quit = true;
 		} break; case SDL_KEYDOWN: {
 			ssize_t kcode = ev.key.keysym.sym;
-			if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keydown"))) == FE_TFUNC) {
-				int gc = fe_savegc(fe_ctx);
-				fe_Object *objs[2];
-				objs[0] = fe_symbol(fe_ctx, "keydown");
-				objs[1] = fe_string(fe_ctx, keyname(kcode));
-				fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
-				fe_restoregc(fe_ctx, gc);
+			if (mode == M_Fe) {
+				if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keydown"))) == FE_TFUNC) {
+					int gc = fe_savegc(fe_ctx);
+					fe_Object *objs[2];
+					objs[0] = fe_symbol(fe_ctx, "keydown");
+					objs[1] = fe_string(fe_ctx, keyname(kcode));
+					fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
+					fe_restoregc(fe_ctx, gc);
+				}
+			} else {
+				JanetSymbol j_sym = janet_csymbol("keydown");
+				JanetBinding j_binding = janet_resolve_ext(janet_env, j_sym);
+				if (j_binding.type != JANET_BINDING_NONE) {
+					if (!janet_checktype(j_binding.value, JANET_FUNCTION)) {
+						janet_panicf("keydown binding must be a function");
+					}
+
+					Janet j_keyname = janet_wrap_string(keyname(kcode));
+					JanetTuple j_argv_tuple = janet_tuple_n(&j_keyname, 0);
+					Janet j_argv = janet_wrap_tuple(j_argv_tuple);
+					JanetFunction *j_fn = janet_unwrap_function(j_binding.value);
+					Janet out;
+					janet_pcall(j_fn, 1, &j_argv, &out, NULL);
+				}
 			}
 		} break; case SDL_KEYUP: {
 			ssize_t kcode = ev.key.keysym.sym;
@@ -352,22 +490,56 @@ run(void)
 			break; case SDLK_ESCAPE:
 				quit = true;
 			break; default: {
-				if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keyup"))) == FE_TFUNC) {
-					int gc = fe_savegc(fe_ctx);
-					fe_Object *objs[2];
-					objs[0] = fe_symbol(fe_ctx, "keyup");
-					objs[1] = fe_string(fe_ctx, keyname(kcode));
-					fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
-					fe_restoregc(fe_ctx, gc);
+				if (mode == M_Fe) {
+					if (fe_type(fe_ctx, fe_eval(fe_ctx, fe_symbol(fe_ctx, "keyup"))) == FE_TFUNC) {
+						int gc = fe_savegc(fe_ctx);
+						fe_Object *objs[2];
+						objs[0] = fe_symbol(fe_ctx, "keyup");
+						objs[1] = fe_string(fe_ctx, keyname(kcode));
+						fe_eval(fe_ctx, fe_list(fe_ctx, objs, 2));
+						fe_restoregc(fe_ctx, gc);
+					}
+				} else {
+					JanetSymbol j_sym = janet_csymbol("keyup");
+					JanetBinding j_binding = janet_resolve_ext(janet_env, j_sym);
+					if (j_binding.type != JANET_BINDING_NONE) {
+						if (!janet_checktype(j_binding.value, JANET_FUNCTION)) {
+							janet_panicf("keyup binding must be a function");
+						}
+
+						Janet j_keyname = janet_wrap_string(keyname(kcode));
+						JanetFunction *j_fn = janet_unwrap_function(j_binding.value);
+						Janet out;
+						janet_pcall(j_fn, 1, &j_keyname, &out, NULL);
+					}
 				}
 			} break;
 			}
 		} break; case SDL_USEREVENT: {
-			int gc = fe_savegc(fe_ctx);
-			fe_Object *objs[1];
-			objs[0] = fe_symbol(fe_ctx, "step");
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, 1));
-			fe_restoregc(fe_ctx, gc);
+			if (mode == M_Fe) {
+				fe_Object *stepfn = fe_symbol(fe_ctx, "step");
+				if (fe_type(fe_ctx, fe_eval(fe_ctx, stepfn)) == FE_TFUNC) {
+					int gc = fe_savegc(fe_ctx);
+					fe_Object *objs[1];
+					objs[0] = stepfn;
+					fe_eval(fe_ctx, fe_list(fe_ctx, objs, 1));
+					fe_restoregc(fe_ctx, gc);
+				}
+			} else {
+				JanetSymbol j_stepsym = janet_csymbol("step");
+				JanetBinding j_stepdef = janet_resolve_ext(janet_env, j_stepsym);
+				if (j_stepdef.type != JANET_BINDING_NONE) {
+					if (!janet_checktype(j_stepdef.value, JANET_FUNCTION)) {
+						janet_panicf("Step binding must be a function");
+					}
+
+					JanetTuple j_argv_tuple = janet_tuple_n(NULL, 0);
+					Janet j_argv = janet_wrap_tuple(j_argv_tuple);
+					JanetFunction *j_fn = janet_unwrap_function(j_stepdef.value);
+					Janet out;
+					janet_pcall(j_fn, 0, &j_argv, &out, NULL);
+				}
+			}
 
 			draw();
 
@@ -385,7 +557,7 @@ main(int argc, char **argv)
 {
 	srand(time(NULL));
 
-	init_fe();
+	init_mem();
 	load(argc > 1 ? argv[1] : NULL);
 
 	bool sdl_error = !init_sdl();
@@ -396,6 +568,7 @@ main(int argc, char **argv)
 
 	run();
 
-	deinit_fe();
+	deinit_vm();
 	deinit_sdl();
+	deinit_mem();
 }

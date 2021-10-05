@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <SDL.h>
 #include "fe.h"
+#include "janet.h"
 
 #define PALETTE_START       0x4000
 #define FONT_START          0x4040
@@ -36,6 +37,7 @@ extern uint8_t *memory;
 extern size_t memory_sz;
 extern size_t color;
 
+extern JanetTable *janet_env;
 extern void *fe_ctx_data;
 extern fe_Context *fe_ctx;
 extern bool quit;
@@ -45,6 +47,7 @@ extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
+extern const struct JanetReg janet_apis[9];
 extern const struct ApiFunc fe_apis[16];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);

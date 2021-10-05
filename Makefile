@@ -2,7 +2,8 @@ CMD      = @
 
 VERSION  = 0.1.0
 NAME     = cel7
-SRC      = api.c font.c util.c third_party/fe/src/fe.c
+SRC      = janet_api.c fe_api.c font.c util.c third_party/fe/src/fe.c \
+	   third_party/janet/janet.c
 OBJ      = $(SRC:.c=.o)
 
 WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes \
@@ -13,7 +14,7 @@ WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes 
 	   -Werror=implicit-function-declaration -Werror=return-type
 
 DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE
-INCL     = -Ithird_party/fe/src/
+INCL     = -Ithird_party/fe/src/ -Ithird_party/janet/
 CC       = cc
 CFLAGS   = -Og -g $(DEF) $(INCL) $(WARNING) -funsigned-char $(shell sdl2-config --cflags)
 LD       = bfd
