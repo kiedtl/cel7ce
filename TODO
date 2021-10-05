@@ -1,5 +1,4 @@
 - Janet support
-  - Find out why janet_def for string isn't working
   - Ensure returned JanetSignal's are handled properly
   - Remove duplicated code between Janet/Fe APIs
     - Should combine files?

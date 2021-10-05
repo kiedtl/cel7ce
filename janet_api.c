@@ -44,7 +44,7 @@ janet_peek(int32_t argc, Janet *argv)
 		char buf[4096] = {0};
 		memcpy((void *)&buf, (void *)&memory[addr], size);
 
-		return janet_wrap_string((uint8_t *)&buf);
+		return janet_stringv((uint8_t *)&buf, size);
 	} else {
 		return janet_wrap_number((double)memory[addr]);
 	}
@@ -66,7 +66,7 @@ janet_cel7put(int32_t argc, Janet *argv)
 	size_t sx = (size_t)janet_getnumber(argv, 0);
 	size_t sy = (size_t)janet_getnumber(argv, 1);
 
-	for (size_t x = sx, arg = 2; arg < argc; ++arg) {
+	for (size_t x = sx, arg = 2; arg < (size_t)argc; ++arg) {
 		char *str = (char *)janet_getstring(argv, arg);
 		size_t sz = strlen(str);
 
@@ -129,7 +129,7 @@ janet_username(int32_t argc, Janet *argv)
 	char *u = getenv("USER");
 	if (u == NULL) u = "root";
 
-	return janet_wrap_string(u);
+	return janet_stringv((const uint8_t *)u, strlen(u));
 }
 
 const struct JanetReg janet_apis[9] = {

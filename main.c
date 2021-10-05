@@ -93,7 +93,7 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 				switch (arg_fmt[i]) {
 				break; case 's': {
 					char *str = va_arg(ap, void *);
-					args[i] = janet_wrap_string(janet_string((const uint8_t *)str, strlen(str)));
+					args[i] = janet_stringv((const uint8_t *)str, strlen(str));
 				} break; default: {
 					assert(false);
 				} break;
@@ -271,7 +271,6 @@ init_sdl(void)
 	SDL_AddTimer(1000 / 40, _sdl_tick, NULL);
 
 	return true;
-
 }
 
 static void
@@ -396,7 +395,7 @@ load(char *user_filename)
 		// Set default values of variables
 		// TODO: set documentation
 		{
-			Janet j_title = janet_wrap_string(config.title);
+			Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
 			janet_def(janet_env, "title", j_title, "");
 
 			Janet j_width = janet_wrap_number(config.width);
