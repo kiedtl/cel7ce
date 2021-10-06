@@ -137,8 +137,8 @@ const struct JanetReg janet_apis[9] = {
 	{      "poke",     janet_poke, "" },
 	{      "peek",     janet_peek, "" },
 	{     "color",    janet_color, "" },
-	{       "put",  janet_cel7put, "" },
-	{       "get",  janet_cel7get, "" },
+	{     "c7put",  janet_cel7put, "" },
+	{     "c7get",  janet_cel7get, "" },
 	{      "fill",     janet_fill, "" },
 	{  "username", janet_username, "" },
 
