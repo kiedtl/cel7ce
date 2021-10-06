@@ -1,11 +1,12 @@
 - Janet support
-  - Ensure returned JanetSignal's are handled properly
+  - Add "shebang" to allow janet code to be embedded in binary
   - Remove duplicated code between Janet/Fe APIs
     - Should combine files?
   - Lock down Janet's OS module?
   - Improve Janet docs
     - Note that one must call janet_string before janet_wrap_string
     - Document janet_def and janet_resolve
+    - Provide example of pcall + error handling
 - Test on Windows
 - Support -debug flag
 - Show errors on display

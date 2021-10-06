@@ -100,9 +100,15 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 				}
 			}
 
+			Janet res;
+			JanetFiber *fiber = janet_current_fiber();
 			JanetFunction *j_fn = janet_unwrap_function(j_binding.value);
-			Janet out;
-			janet_pcall(j_fn, argc, args, &out, NULL);
+			JanetSignal sig = janet_pcall(j_fn, argc, args, &res, &fiber);
+
+			if (sig == JANET_SIGNAL_ERROR) {
+				janet_stacktrace(fiber, res);
+			}
+
 			free(args);
 		}
 	}
