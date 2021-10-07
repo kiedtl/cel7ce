@@ -26,6 +26,12 @@ static uint32_t colors[] = {
 	0x7c8d99, 0xc2beae, 0x75715e, 0x3e3d32
 };
 
+static char *mouse_button_strs[] = {
+	[SDL_BUTTON_LEFT]   = "left",
+	[SDL_BUTTON_MIDDLE] = "middle",
+	[SDL_BUTTON_RIGHT]  = "right",
+};
+
 struct Config config = {
 	.title = "cel7 ce",
 	.width = 24,
@@ -70,6 +76,8 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 				switch (arg_fmt[i]) {
 				break; case 's': {
 					objs[i + 1] = fe_string(fe_ctx, va_arg(ap, void *));
+				} break; case 'n': {
+					objs[i + 1] = fe_number(fe_ctx, (float)va_arg(ap, double));
 				} break; default: {
 					assert(false);
 				} break;
@@ -94,6 +102,8 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 				break; case 's': {
 					char *str = va_arg(ap, void *);
 					args[i] = janet_stringv((const uint8_t *)str, strlen(str));
+				} break; case 'n': {
+					args[i] = janet_wrap_number(va_arg(ap, double));
 				} break; default: {
 					assert(false);
 				} break;
@@ -520,6 +530,15 @@ run(void)
 				call_func("keyup", "s", keyname(kcode));
 			} break;
 			}
+		} break; case SDL_MOUSEMOTION: {
+			call_func("mouse", "snnn", "motion", (double)1,
+				(double)ev.motion.x, (double)ev.motion.y);
+		} break; case SDL_MOUSEBUTTONDOWN: {
+			call_func("mouse", "snnn", mouse_button_strs[ev.button.button],
+				(double)ev.button.clicks, (double)ev.button.x, (double)ev.button.y);
+		} break; case SDL_MOUSEBUTTONUP: {
+			call_func("mouse", "snnn", mouse_button_strs[ev.button.button],
+				(double)ev.button.clicks, (double)ev.button.x, (double)ev.button.y);
 		} break; case SDL_USEREVENT: {
 			call_func("step", "");
 			draw();

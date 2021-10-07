@@ -1,3 +1,4 @@
+- Mouse clicks/scrolls?
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Remove duplicated code between Janet/Fe APIs
@@ -19,4 +20,4 @@
 - Cartridge format (gif? png?)
   - Consider adding a form of persistent storage on the cartridge
     and use for storing highscores in snake demo
-- Mouse clicks/scrolls?
+- Joystick support?

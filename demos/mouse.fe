@@ -1,0 +1,12 @@
+(= step (fn ()))
+
+(= mouse (fn (type evnum x y)
+    (let cx (// (// x 7) scale))
+    (let cy (// (// y 7) scale))
+
+    (color 0x01)
+    (fill 0 0 width height " ")
+    (put 1 1 type " " evnum " " x " " y " ")
+    (color 0x10)
+    (put cx cy " ")
+))
