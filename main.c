@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <err.h>
+#include <getopt.h>
 #include <SDL.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -387,6 +388,11 @@ load(char *user_filename)
 			objs[1] = fe_symbol(fe_ctx, "scale");
 			objs[2] = fe_number(fe_ctx, config.scale);
 			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+			objs[0] = fe_symbol(fe_ctx, "=");
+			objs[1] = fe_symbol(fe_ctx, "debug");
+			objs[2] = fe_bool(fe_ctx, config.debug);
+			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
 		}
 
 
@@ -414,14 +420,10 @@ load(char *user_filename)
 			Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
 			janet_def(janet_env, "title", j_title, "");
 
-			Janet j_width = janet_wrap_number(config.width);
-			janet_def(janet_env, "width", j_width, "");
-
-			Janet j_height = janet_wrap_number(config.height);
-			janet_def(janet_env, "height", j_height, "");
-
-			Janet j_scale = janet_wrap_number(config.scale);
-			janet_def(janet_env, "scale", j_scale, "");
+			janet_def(janet_env, "width",  janet_wrap_number(config.width), "");
+			janet_def(janet_env, "height", janet_wrap_number(config.height), "");
+			janet_def(janet_env, "scale",  janet_wrap_number(config.scale), "");
+			janet_def(janet_env, "debug",  janet_wrap_boolean(config.debug), "");
 		}
 
 		janet_dostring(janet_env, start, filename, NULL);
@@ -536,9 +538,6 @@ run(void)
 		} break; case SDL_MOUSEBUTTONDOWN: {
 			call_func("mouse", "snnn", mouse_button_strs[ev.button.button],
 				(double)ev.button.clicks, (double)ev.button.x, (double)ev.button.y);
-		} break; case SDL_MOUSEBUTTONUP: {
-			call_func("mouse", "snnn", mouse_button_strs[ev.button.button],
-				(double)ev.button.clicks, (double)ev.button.x, (double)ev.button.y);
 		} break; case SDL_USEREVENT: {
 			call_func("step", "");
 			draw();
@@ -555,16 +554,33 @@ run(void)
 int
 main(int argc, char **argv)
 {
+	while (true) {
+		static struct option long_opts[] = {
+			{ "debug", no_argument, 0, 'D' },
+			{    NULL,           0, 0,   0 },
+		};
+
+		int c;
+		if ((c = getopt_long(argc, argv, "", long_opts, NULL)) == -1)
+			break;
+
+		switch (c) {
+		break; case 'D':
+			config.debug = true;
+		break; case '?':
+			errx(1, "usage: %s [--debug] [file]", argv[0]);
+		break; default:
+		break;
+		}
+	}
+
 	srand(time(NULL));
 
 	init_mem();
-	load(argc > 1 ? argv[1] : NULL);
+	load(optind < argc ? argv[optind++] : NULL);
 
 	bool sdl_error = !init_sdl();
-	if (sdl_error) {
-		fprintf(stderr, "Error initializing SDL: %s\n", SDL_GetError());
-		return 1;
-	}
+	if (sdl_error) errx(1, "SDL error: %s\n", SDL_GetError());
 
 	run();
 

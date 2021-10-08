@@ -13,7 +13,7 @@ WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes 
 	   -Wincompatible-pointer-types \
 	   -Werror=implicit-function-declaration -Werror=return-type
 
-DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE
+DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE -D_GNU_SOURCE
 INCL     = -Ithird_party/fe/src/ -Ithird_party/janet/
 CC       = cc
 CFLAGS   = -Og -g $(DEF) $(INCL) $(WARNING) -funsigned-char $(shell sdl2-config --cflags)

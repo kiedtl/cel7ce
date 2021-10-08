@@ -1,4 +1,5 @@
-- Mouse clicks/scrolls?
+- Support -debug flag
+- Make // and % take multiple arguments(?)
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Remove duplicated code between Janet/Fe APIs
@@ -9,13 +10,13 @@
     - Document janet_def and janet_resolve
     - Provide example of pcall + error handling
 - Test on Windows
-- Support -debug flag
+- ESC menu (as with TIC-80?) (needs minimum screen size)
+  - about screen (cel7ce source, homepage, repo, etc)
+  - reload cartridge
+  - view cartridge source
+  - view cartridge info (author, date, etc)
 - Show errors on display
 - Create default ROM that has LOAD/repl commands?
-- ESC menu (as with TIC-80?)
-  - view source
-  - view info (author, date, etc)
-  - go back to repl
 - Nice splash screen
 - Cartridge format (gif? png?)
   - Consider adding a form of persistent storage on the cartridge
