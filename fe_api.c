@@ -186,9 +186,7 @@ static fe_Object *
 fe_username(fe_Context *ctx, fe_Object *arg)
 {
 	UNUSED(arg);
-	char *u = getenv("USER");
-	if (u == NULL) u = "root";
-	return fe_string(ctx, u);
+	return fe_string(ctx, get_username());
 }
 
 const struct ApiFunc fe_apis[16] = {

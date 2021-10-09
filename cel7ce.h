@@ -7,6 +7,11 @@
 #include "fe.h"
 #include "janet.h"
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #define PALETTE_START       0x4000
 #define FONT_START          0x4040
 #define DISPLAY_START       0x52a0
@@ -51,5 +56,6 @@ extern const struct JanetReg janet_apis[9];
 extern const struct ApiFunc fe_apis[16];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);
+char * get_username(void);
 
 #endif

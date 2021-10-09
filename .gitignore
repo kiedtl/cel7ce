@@ -1,4 +1,9 @@
 cel7
 log
 core
+*.exe
 *.o
+*.obj
+*.pdb
+*.lib
+*.dll

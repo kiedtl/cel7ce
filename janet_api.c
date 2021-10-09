@@ -126,10 +126,8 @@ janet_username(int32_t argc, Janet *argv)
 	janet_fixarity(argc, 0);
 	UNUSED(argv);
 
-	char *u = getenv("USER");
-	if (u == NULL) u = "root";
-
-	return janet_stringv((const uint8_t *)u, strlen(u));
+	const uint8_t *u = (const uint8_t *)get_username();
+	return janet_stringv(u, strlen((char *)u));
 }
 
 const struct JanetReg janet_apis[9] = {
