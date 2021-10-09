@@ -1,5 +1,17 @@
 (= step (fn ()))
 
+(= keydown (fn (k)
+    (color 0x01)
+    (fill 0 0 width height " ")
+    (put 1 1 "keydown " k)
+))
+
+(= keyup (fn (k)
+    (color 0x01)
+    (fill 0 0 width height " ")
+    (put 1 1 "keyup " k)
+))
+
 (= mouse (fn (type evnum x y)
     (let cx (// (// x 7) scale))
     (let cy (// (// y 7) scale))
