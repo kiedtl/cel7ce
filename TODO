@@ -1,5 +1,4 @@
-- Support -debug flag
-- Make // and % take multiple arguments(?)
+- Fix keys
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Remove duplicated code between Janet/Fe APIs
@@ -15,6 +14,7 @@
   - reload cartridge
   - view cartridge source
   - view cartridge info (author, date, etc)
+- Make // and % take multiple arguments(?)
 - Show errors on display
 - Create default ROM that has LOAD/repl commands?
 - Nice splash screen
