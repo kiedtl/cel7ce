@@ -1,12 +1,20 @@
 #if defined(_WIN32) || defined(__WIN32__)
 #include <windows.h>
+#define err(e, ...) do { \
+	fprintf(stderr, __VA_ARGS__); \
+	perror(": "); \
+	exit(e); \
+} while (0);
+#define errx(e, ...) do { \
+	fprintf(stderr, __VA_ARGS__); \
+	exit(e); \
+} while (0);
 #elif defined(__linux__)
 #include <unistd.h>
+#include <err.h>
 #endif
 
 #include <assert.h>
-#include <err.h>
-#include <getopt.h>
 #include <SDL.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -16,6 +24,7 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "arg.h"
 #include "cel7ce.h"
 #include "fe.h"
 #include "janet.h"
@@ -311,8 +320,8 @@ load(char *user_filename)
 #if defined(__linux__)
 		readlink("/proc/self/exe", filename, ARRAY_LEN(filename));
 #elif defined(_WIN32) || defined(__WIN32__)
-		LPWSTR tbuffer[4096];
-		DWORD sz = GetModuleFileName(NULL, tbuffer, ARRAY_LEN(tbuffer));
+		LPSTR tbuffer[4096];
+		DWORD sz = GetModuleFileName(NULL, (LPSTR)tbuffer, ARRAY_LEN(tbuffer));
 		if (sz == 0) { // error
 			switch (GetLastError()) {
 			break; case ERROR_INSUFFICIENT_BUFFER:
@@ -322,7 +331,7 @@ load(char *user_filename)
 			break;
 			}
 		}
-		wcstombs(filename, tbuffer, sz);
+		strncpy(filename, (LPSTR)tbuffer, sz);
 #else
 		errx(1, "No cartridge or file provided.");
 #endif
@@ -353,7 +362,7 @@ load(char *user_filename)
 	char *start = filebuf;
 	if (fileisbin) {
 		size_t last0 = 0;
-		for (size_t i = 0; i < st.st_size; ++i)
+		for (size_t i = 0; i < (size_t)st.st_size; ++i)
 			if (filebuf[i] == '\0') last0 = i;
 		start = &filebuf[last0 + 1];
 	}
@@ -558,30 +567,23 @@ run(void)
 int
 main(int argc, char **argv)
 {
-	while (true) {
-		static struct option long_opts[] = {
-			{ "debug", no_argument, 0, 'D' },
-			{    NULL,           0, 0,   0 },
-		};
-
-		int c;
-		if ((c = getopt_long(argc, argv, "", long_opts, NULL)) == -1)
-			break;
-
-		switch (c) {
-		break; case 'D':
-			config.debug = true;
-		break; case '?':
-			errx(1, "usage: %s [--debug] [file]", argv[0]);
-		break; default:
-		break;
-		}
-	}
+	ARGBEGIN {
+	break; case 'd':
+		config.debug = !config.debug;
+	break; case 'v': case 'V':
+		printf("cel7ce v"VERSION"\n");
+		return 0;
+	break; case 'h': default:
+		printf("usage: %s [-d] [file]\n", argv[0]);
+		printf("       %s [-V]\n", argv[0]);
+		printf("       %s [-h]\n", argv[0]);
+		return 0;
+	} ARGEND
 
 	srand(time(NULL));
 
 	init_mem();
-	load(optind < argc ? argv[optind++] : NULL);
+	load(*argv);
 
 	bool sdl_error = !init_sdl();
 	if (sdl_error) errx(1, "SDL error: %s\n", SDL_GetError());
@@ -591,4 +593,6 @@ main(int argc, char **argv)
 	deinit_vm();
 	deinit_sdl();
 	deinit_mem();
+
+	return 0;
 }
