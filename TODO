@@ -14,7 +14,6 @@
   - reload cartridge
   - view cartridge source
   - view cartridge info (author, date, etc)
-- Make // and % take multiple arguments(?)
 - Show errors on display
 - Create default ROM that has LOAD/repl commands?
 - Nice splash screen
@@ -22,8 +21,9 @@
   - Consider adding a form of persistent storage on the cartridge
     and use for storing highscores in snake demo
 - Delay timer/callbacks?
-- Joystick support?
+- Retrieve source for tetris
 - End-user configuration:
 	- CEL7_CLOCKSPEED
 	- CEL7_SKIPSPLASH
 	- CEL7_DEBUG
+- Joystick support?

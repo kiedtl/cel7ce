@@ -4,9 +4,17 @@
 static fe_Object *
 fe_divide(fe_Context *ctx, fe_Object *arg)
 {
-	ssize_t a = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
-	ssize_t b = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
-	return fe_number(ctx, (float)(a / b));
+	ssize_t accm = 0;
+	ssize_t b;
+
+	accm = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+
+	do {
+		b = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+		accm /= b;
+	} while (fe_type(ctx, arg) == FE_TPAIR);
+
+	return fe_number(ctx, (float)accm);
 }
 
 static fe_Object *
