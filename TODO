@@ -1,8 +1,9 @@
-- Fix keys
+- Fix key naming
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Remove duplicated code between Janet/Fe APIs
     - Should combine files?
+  - Add bitwise operators as functions
   - Lock down Janet's OS module?
   - Improve Janet docs
     - Note that one must call janet_string before janet_wrap_string
@@ -20,4 +21,9 @@
 - Cartridge format (gif? png?)
   - Consider adding a form of persistent storage on the cartridge
     and use for storing highscores in snake demo
+- Delay timer/callbacks?
 - Joystick support?
+- End-user configuration:
+	- CEL7_CLOCKSPEED
+	- CEL7_SKIPSPLASH
+	- CEL7_DEBUG
