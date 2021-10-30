@@ -546,11 +546,14 @@ run(void)
 			} break;
 			}
 		} break; case SDL_MOUSEMOTION: {
-			call_func("mouse", "snnn", "motion", (double)1,
-				(double)ev.motion.x, (double)ev.motion.y);
+      			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;
+      			double cely = (((double)ev.button.y) / FONT_HEIGHT) / config.scale;
+			call_func("mouse", "snnn", "motion", (double)1, celx, cely);
 		} break; case SDL_MOUSEBUTTONDOWN: {
+      			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;
+      			double cely = (((double)ev.button.y) / FONT_HEIGHT) / config.scale;
 			call_func("mouse", "snnn", mouse_button_strs[ev.button.button],
-				(double)ev.button.clicks, (double)ev.button.x, (double)ev.button.y);
+				(double)ev.button.clicks, celx, cely);
 		} break; case SDL_USEREVENT: {
 			call_func("step", "");
 			draw();
