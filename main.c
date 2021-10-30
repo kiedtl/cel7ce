@@ -578,13 +578,21 @@ run(void)
 {
 	SDL_Event ev;
 
+	// Cache current mode for a single cycle. This way, if one callback (say, init())
+	// switches the mode, we won't abruptly run another mode's step() without running
+	// its init().
+	//
+	enum ModeType c_mode;
+
 	while (SDL_WaitEvent(&ev) && !quit) {
+		c_mode = mode.cur;
+
 		switch (ev.type) {
 		break; case SDL_QUIT: {
 			quit = true;
 		} break; case SDL_KEYDOWN: {
 			ssize_t kcode = ev.key.keysym.sym;
-			call_func(callbacks[mode.cur][SC_keydown], "s", keyname(kcode));
+			call_func(callbacks[c_mode][SC_keydown], "s", keyname(kcode));
 		} break; case SDL_KEYUP: {
 			ssize_t kcode = ev.key.keysym.sym;
 
@@ -592,25 +600,25 @@ run(void)
 			break; case SDLK_ESCAPE:
 				quit = true;
 			break; default: {
-				call_func(callbacks[mode.cur][SC_keyup], "s", keyname(kcode));
+				call_func(callbacks[c_mode][SC_keyup], "s", keyname(kcode));
 			} break;
 			}
 		} break; case SDL_MOUSEMOTION: {
       			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;
       			double cely = (((double)ev.button.y) / FONT_HEIGHT) / config.scale;
-			call_func(callbacks[mode.cur][SC_mouse], "snnn", "motion", (double)1, celx, cely);
+			call_func(callbacks[c_mode][SC_mouse], "snnn", "motion", (double)1, celx, cely);
 		} break; case SDL_MOUSEBUTTONDOWN: {
       			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;
       			double cely = (((double)ev.button.y) / FONT_HEIGHT) / config.scale;
-			call_func(callbacks[mode.cur][SC_mouse], "snnn", mouse_button_strs[ev.button.button],
+			call_func(callbacks[c_mode][SC_mouse], "snnn", mouse_button_strs[ev.button.button],
 				(double)ev.button.clicks, celx, cely);
 		} break; case SDL_USEREVENT: {
-			if (!mode.inited[mode.cur]) {
-				call_func(callbacks[mode.cur][SC_init], "");
-				mode.inited[mode.cur] = true;
+			if (!mode.inited[c_mode]) {
+				call_func(callbacks[c_mode][SC_init], "");
+				mode.inited[c_mode] = true;
 			}
 
-			call_func(callbacks[mode.cur][SC_step], "");
+			call_func(callbacks[c_mode][SC_step], "");
 			draw();
 
 			// Flush user events that may have accumulated if step()
