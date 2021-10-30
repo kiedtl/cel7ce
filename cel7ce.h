@@ -1,6 +1,20 @@
 #ifndef CEL7CE_H
 #define CEL7CE_H
 
+#if defined(_WIN32) || defined(__WIN32__)
+#define err(e, ...) do { \
+	fprintf(stderr, __VA_ARGS__); \
+	perror(": "); \
+	exit(e); \
+} while (0);
+#define errx(e, ...) do { \
+	fprintf(stderr, __VA_ARGS__); \
+	exit(e); \
+} while (0);
+#elif defined(__linux__)
+#include <err.h>
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL.h>
@@ -62,6 +76,10 @@ enum Bank {
 	BK_COUNT,
 };
 
+enum LangMode {
+	LM_Fe, LM_Janet
+};
+
 extern struct Config config;
 extern struct Mode mode;
 
@@ -74,6 +92,8 @@ extern void *fe_ctx_data;
 extern fe_Context *fe_ctx;
 extern bool quit;
 
+extern enum LangMode lang;
+
 extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
@@ -83,6 +103,10 @@ extern const struct JanetReg janet_apis[12];
 extern const struct ApiFunc fe_apis[16];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);
-char * get_username(void);
+char *get_username(void);
+void load(char *user_filename);
+void call_func(const char *fnname, const char *arg_fmt, ...);
+void get_string_global(char *name, char *buf, size_t sz);
+float get_number_global(char *name);
 
 #endif
