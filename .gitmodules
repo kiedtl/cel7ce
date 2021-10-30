@@ -1,3 +1,6 @@
 [submodule "third_party/fe"]
 	path = third_party/fe
 	url = https://github.com/rxi/fe
+[submodule "third_party/koio"]
+	path = third_party/koio
+	url = https://git.sr.ht/~sircmpwn/koio

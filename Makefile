@@ -9,14 +9,22 @@ VERSION  = 0.1.0
 include config.mk
 
 BIN      = $(NAME)
-SRC      = janet_api.c fe_api.c font.c util.c third_party/fe/src/fe.c \
-	   third_party/janet/janet.c main.c
+SRC      = assets.c janet_api.c fe_api.c font.c util.c \
+	   third_party/fe/src/fe.c third_party/janet/janet.c main.c
+ASSETS   = builtin/start.janet builtin/setup.janet
 OBJ      = $(SRC:.c=.o)
+
+KOIO_AR  = third_party/koio/build/koio.a
+KOIO_SRC = third_party/koio/lib/ko_add_alias.c third_party/koio/lib/ko_add_file.c \
+	   third_party/koio/lib/ko_del_file.c third_party/koio/lib/ko_fopen.c \
+	   third_party/koio/lib/hashtable.c
+KOIO_OBJ = $(KOIO_SRC:.c=.o)
 
 # Use the correct file extensions on Windows.
 ifeq ($(OS),Windows_NT)
 	BIN = $(NAME).exe
 	OBJ = $(SRC:.c=.obj)
+	KOIO_OBJ = $(KOIO_SRC:.c=.obj)
 endif
 
 CC       = $(UNIX_CC)
@@ -35,7 +43,7 @@ WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes 
 	   -Wno-newline-eof -Wno-language-extension-token
 
 DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE -D_GNU_SOURCE
-INCL     = -Ithird_party/fe/src/ -Ithird_party/janet/ -I.
+INCL     = -Ithird_party/fe/src/ -Ithird_party/janet/ -Ithird_party/koio/include/ -I.
 
 # Defines:
 # -DSDL_DISABLE_ANALYZE_MACROS removes the need for the nonstandard sal.h on
@@ -76,9 +84,17 @@ else
 	$(make_object)
 endif
 
-$(BIN): main.c $(OBJ) def.c7
+assets.c: $(ASSETS) third_party/koio/build/koio
+	@printf "    %-8s%s\n" "KOIO" $@
+	$(CMD)third_party/koio/build/koio -o assets.c $(ASSETS)
+
+$(KOIO_AR): $(KOIO_OBJ)
+	@printf "    %-8s%s\n" "AR" $@
+	$(CMD)ar rvs $@ $^
+
+$(BIN): main.c $(OBJ) $(KOIO_AR) def.c7
 	@printf "    %-8s%s\n" "CCLD" $@
-	$(CMD)$(CC) -o $@ $(OBJ) $(CFLAGS) $(LDFLAGS)
+	$(CMD)$(CC) -o $@ $(OBJ) $(KOIO_AR) $(CFLAGS) $(LDFLAGS)
 	$(CMD)printf '\0' >> $(BIN)
 	$(CMD)cat def.c7 >> $(BIN)
 

@@ -1,6 +1,30 @@
 #include "cel7ce.h"
 #include "janet.h"
 
+// Internal-only APIs. There are no fe variants of these, as the internal
+// scripts are written in Janet only.
+
+static Janet
+janet_swibnk(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 1);
+	bank = (size_t)janet_getnumber(argv, 0);
+	// TODO: validate input
+	return janet_wrap_nil();
+}
+
+static Janet
+janet_swimd(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 1);
+	mode.cur = (size_t)janet_getnumber(argv, 0);
+	// TODO: validate input
+	return janet_wrap_nil();
+}
+
+// ----------------------------------------------------------------------------
+// Public APIs.
+
 static Janet
 janet_quit(int32_t argc, Janet *argv)
 {
@@ -11,22 +35,30 @@ janet_quit(int32_t argc, Janet *argv)
 }
 
 static Janet
+janet_rand(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 1);
+	size_t n = (size_t)janet_getnumber(argv, 0);
+	return janet_wrap_number((double)(rand() % n));
+}
+
+static Janet
 janet_poke(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 2);
+	// TODO: ensure in correct bank
 
 	size_t addr = (size_t)janet_getnumber(argv, 0);
-	Janet payload = argv[1];
 
-	if (janet_checktype(payload, JANET_STRING)) {
-		char *str = (char *)janet_unwrap_string(payload);
-		memcpy(&memory[addr], str, strlen(str));
-	} else if (janet_checktype(payload, JANET_NUMBER)) {
-		size_t byte = (uint8_t)janet_unwrap_number(payload);
-		memory[addr] = byte;
+	if (janet_checktype(argv[1], JANET_STRING)) {
+		JanetString str = janet_getstring(argv, 1);
+		memcpy(&memory[bank][addr], str, janet_string_length(str));
+	} else if (janet_checktype(argv[1], JANET_NUMBER)) {
+		size_t byte = (uint8_t)janet_getnumber(argv, 1);
+		memory[bank][addr] = byte;
 	} else {
 		janet_panicf("bad slot #1, expected %T or %T, got %v",
-			JANET_STRING, JANET_NUMBER, payload);
+			JANET_STRING, JANET_NUMBER, argv[1]);
 	}
 
 	return janet_wrap_nil();
@@ -38,15 +70,16 @@ janet_peek(int32_t argc, Janet *argv)
 	janet_arity(argc, 1, 2);
 
 	size_t addr = (size_t)janet_getnumber(argv, 0);
-	size_t size = (size_t)janet_optnumber(argv, argc, 0, 1);
+	size_t size = (size_t)janet_optnumber(argv, argc, 1, 1);
 
 	if (size > 1) {
-		char buf[4096] = {0};
-		memcpy((void *)&buf, (void *)&memory[addr], size);
+		char *buf = janet_smalloc(size);
+		memset(buf, 0x0, size);
+		memcpy(buf, (void *)&memory[bank][addr], size);
 
-		return janet_stringv((uint8_t *)&buf, size);
+		return janet_stringv((uint8_t *)buf, size);
 	} else {
-		return janet_wrap_number((double)memory[addr]);
+		return janet_wrap_number((double)memory[bank][addr]);
 	}
 }
 
@@ -62,6 +95,7 @@ static Janet
 janet_cel7put(int32_t argc, Janet *argv)
 {
 	janet_arity(argc, 3, -1);
+	// TODO: ensure in correct bank
 
 	size_t sx = (size_t)janet_getnumber(argv, 0);
 	size_t sy = (size_t)janet_getnumber(argv, 1);
@@ -73,8 +107,8 @@ janet_cel7put(int32_t argc, Janet *argv)
 		for (size_t i = 0; i < sz && x < config.width; ++i, ++x) {
 			size_t coord = sy * config.width + x;
 			size_t addr = DISPLAY_START + (coord * 2);
-			memory[addr + 0] = str[i];
-			memory[addr + 1] = color;
+			memory[BK_Normal][addr + 0] = str[i];
+			memory[BK_Normal][addr + 1] = color;
 		}
 	}
 
@@ -85,11 +119,12 @@ static Janet
 janet_cel7get(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 2);
+	// TODO: ensure in correct bank
 
 	size_t x = (size_t)janet_getnumber(argv, 0);
 	size_t y = (size_t)janet_getnumber(argv, 1);
 
-	uint8_t res = memory[y * config.width + x + 0];
+	uint8_t res = memory[BK_Normal][y * config.width + x + 0];
 	return janet_wrap_number((double)res);
 }
 
@@ -97,6 +132,7 @@ static Janet
 janet_fill(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 5);
+	// TODO: ensure in correct bank
 
 	size_t x = (size_t)janet_getnumber(argv, 0);
 	size_t y = (size_t)janet_getnumber(argv, 1);
@@ -112,8 +148,8 @@ janet_fill(int32_t argc, Janet *argv)
 		for (size_t dx = x; dx < (x + w); ++dx) {
 			size_t coord = dy * config.width + dx;
 			size_t addr = DISPLAY_START + (coord * 2);
-			memory[addr + 0] = c;
-			memory[addr + 1] = color;
+			memory[BK_Normal][addr + 0] = c;
+			memory[BK_Normal][addr + 1] = color;
 		}
 	}
 
@@ -130,8 +166,11 @@ janet_username(int32_t argc, Janet *argv)
 	return janet_stringv(u, strlen((char *)u));
 }
 
-const struct JanetReg janet_apis[9] = {
+const struct JanetReg janet_apis[12] = {
+	{    "swibnk",   janet_swibnk, "" },
+	{     "swimd",    janet_swimd, "" },
 	{      "quit",     janet_quit, "" },
+	{      "rand",     janet_rand, "" },
 	{      "poke",     janet_poke, "" },
 	{      "peek",     janet_peek, "" },
 	{     "color",    janet_color, "" },

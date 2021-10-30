@@ -45,14 +45,15 @@ fe_poke(fe_Context *ctx, fe_Object *arg)
 {
 	size_t addr = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	fe_Object *payload = fe_nextarg(ctx, &arg);
+	// TODO: ensure in correct bank
 
 	if (fe_type(ctx, payload) == FE_TSTRING) {
 		char buf[4096] = {0};
 		size_t sz = fe_tostring(ctx, payload, (char *)&buf, sizeof(buf));
-		memcpy(&memory[addr], (char *)&buf, sz);
+		memcpy(&memory[bank][addr], (char *)&buf, sz);
 	} else {
 		size_t byte = (uint8_t)fe_tonumber(ctx, payload);
-		memory[addr] = byte;
+		memory[bank][addr] = byte;
 	}
 
 	return fe_bool(ctx, 0);
@@ -68,11 +69,11 @@ fe_peek(fe_Context *ctx, fe_Object *arg)
 		size = (size_t)fe_tonumber(ctx, fe_car(ctx, arg));
 
 		char buf[4096] = {0};
-		memcpy((void *)&buf, (void *)&memory[addr], size);
+		memcpy((void *)&buf, (void *)&memory[bank][addr], size);
 
 		return fe_string(ctx, (const char *)&buf);
 	} else {
-		return fe_number(ctx, (float)memory[addr]);
+		return fe_number(ctx, (float)memory[bank][addr]);
 	}
 }
 
@@ -87,6 +88,7 @@ static fe_Object *
 fe_put(fe_Context *ctx, fe_Object *arg)
 {
 	char buf[4096] = {0};
+	// TODO: ensure in correct bank
 
 	size_t sx = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t sy = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
@@ -101,8 +103,8 @@ fe_put(fe_Context *ctx, fe_Object *arg)
 		for (size_t i = 0; i < sz && x < config.width; ++i, ++x) {
 			size_t coord = sy * config.width + x;
 			size_t addr = DISPLAY_START + (coord * 2);
-			memory[addr + 0] = buf[i];
-			memory[addr + 1] = color;
+			memory[BK_Normal][addr + 0] = buf[i];
+			memory[BK_Normal][addr + 1] = color;
 		}
 
 	} while (fe_type(ctx, arg) == FE_TPAIR);
@@ -113,15 +115,17 @@ fe_put(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_get(fe_Context *ctx, fe_Object *arg)
 {
+	// TODO: ensure in correct bank
 	size_t x = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t y = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
-	uint8_t res = memory[y * config.width + x + 0];
+	uint8_t res = memory[BK_Normal][y * config.width + x + 0];
 	return fe_number(ctx, res);
 }
 
 static fe_Object *
 fe_fill(fe_Context *ctx, fe_Object *arg)
 {
+	// TODO: ensure in correct bank
 	size_t x = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t y = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t w = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
@@ -138,8 +142,8 @@ fe_fill(fe_Context *ctx, fe_Object *arg)
 		for (size_t dx = x; dx < (x + w); ++dx) {
 			size_t coord = dy * config.width + dx;
 			size_t addr = DISPLAY_START + (coord * 2);
-			memory[addr + 0] = c;
-			memory[addr + 1] = color;
+			memory[BK_Normal][addr + 0] = c;
+			memory[BK_Normal][addr + 1] = color;
 		}
 	}
 

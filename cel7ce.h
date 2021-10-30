@@ -12,9 +12,10 @@
 typedef SSIZE_T ssize_t;
 #endif
 
+#define MEMORY_SIZE         0x7fff
 #define PALETTE_START       0x4000
 #define FONT_START          0x4040
-#define DISPLAY_START       0x52a0
+#define DISPLAY_START       0x52a0    /* bank 1 */
 #define FE_CTX_DATA_SIZE    65535
 #define FONT_HEIGHT         7
 #define FONT_WIDTH          7
@@ -31,15 +32,41 @@ struct Config {
 	bool debug;
 };
 
+struct Mode {
+	enum ModeType {
+		MT_Start  = 0,
+		MT_Setup  = 1,
+		MT_Normal = 2,
+		MT_COUNT,
+	} cur;
+	_Bool inited[MT_COUNT];
+};
+
 struct ApiFunc {
 	const char *name;
 	fe_Object *(*func)(fe_Context *, fe_Object *);
 };
 
-extern struct Config config;
+enum ScriptCallback {
+	SC_init    = 0,
+	SC_step    = 1,
+	SC_keyup   = 2,
+	SC_keydown = 3,
+	SC_mouse   = 4,
+	SC_COUNT,
+};
 
-extern uint8_t *memory;
-extern size_t memory_sz;
+enum Bank {
+	BK_Normal = 0,
+	BK_Rom    = 1,
+	BK_COUNT,
+};
+
+extern struct Config config;
+extern struct Mode mode;
+
+extern uint8_t *memory[BK_COUNT];
+extern size_t bank;
 extern size_t color;
 
 extern JanetTable *janet_env;
@@ -52,7 +79,7 @@ extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
-extern const struct JanetReg janet_apis[9];
+extern const struct JanetReg janet_apis[12];
 extern const struct ApiFunc fe_apis[16];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);

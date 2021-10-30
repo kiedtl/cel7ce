@@ -26,8 +26,13 @@
 
 #include "arg.h"
 #include "cel7ce.h"
+#include "koio.h"
 #include "fe.h"
 #include "janet.h"
+
+const char *builtin_files[] = {
+	"builtin/start.janet", "builtin/setup.janet"
+};
 
 static uint32_t colors[] = {
 	0x0b0c0d, 0xf7f7e6, 0xf71467, 0xfd971f,
@@ -42,6 +47,21 @@ static char *mouse_button_strs[] = {
 	[SDL_BUTTON_RIGHT]  = "right",
 };
 
+static char *callbacks[MT_COUNT][SC_COUNT] = {
+	[MT_Start]  = { [SC_init]  = "I_START_init",  [SC_step] = "I_START_step",
+		        [SC_keyup] = "I_START_keyup", [SC_keydown] = "I_START_keydown",
+		        [SC_mouse] = "I_START_mouse"
+		      },
+	[MT_Setup]  = { [SC_init]  = "I_SETUP_init",  [SC_step] = "I_SETUP_step",
+		        [SC_keyup] = "I_SETUP_keyup", [SC_keydown] = "I_SETUP_keydown",
+		        [SC_mouse] = "I_SETUP_mouse"
+		      },
+	[MT_Normal] = { [SC_init]  = "init",  [SC_step] = "step",
+		        [SC_keyup] = "keyup", [SC_keydown] = "keydown",
+		        [SC_mouse] = "mouse"
+		       },
+};
+
 struct Config config = {
 	.title = "cel7 ce",
 	.width = 24,
@@ -50,12 +70,17 @@ struct Config config = {
 	.debug = false,
 };
 
-enum Mode {
-	M_Fe, M_Janet
-} mode = M_Fe;
+struct Mode mode = {
+	.cur = MT_Start,
+	.inited = {0},
+};
 
-uint8_t *memory = NULL;
-size_t memory_sz = 0;
+enum LangMode {
+	LM_Fe, LM_Janet
+} lang = LM_Fe;
+
+uint8_t *memory[BK_COUNT] = {0};
+size_t bank = BK_Normal;
 size_t color = 1;
 
 JanetTable *janet_env;
@@ -74,7 +99,10 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 	va_list ap;
 	va_start(ap, arg_fmt);
 
-	if (mode == M_Fe) {
+	// Default to LM_Janet if we're not in normal mode, as all builtin scripts
+	// are written in Janet
+	//
+	if (lang == LM_Fe && mode.cur == MT_Normal) {
 		fe_Object *fnsym = fe_symbol(fe_ctx, fnname);
 		if (fe_type(fe_ctx, fe_eval(fe_ctx, fnsym)) == FE_TFUNC) {
 			int gc = fe_savegc(fe_ctx);
@@ -139,7 +167,7 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 static void
 get_string_global(char *name, char *buf, size_t sz)
 {
-	if (mode == M_Fe) {
+	if (lang == LM_Fe) {
 		ssize_t gc = fe_savegc(fe_ctx);
 		fe_Object *var = fe_eval(fe_ctx, fe_symbol(fe_ctx, name));
 		if (fe_type(fe_ctx, var) == FE_TSTRING) {
@@ -148,7 +176,7 @@ get_string_global(char *name, char *buf, size_t sz)
 			// TODO: error
 		}
 		fe_restoregc(fe_ctx, gc);
-	} else if (mode == M_Janet) {
+	} else if (lang == LM_Janet) {
 		JanetSymbol j_namesym = janet_symbol((uint8_t *)name, strlen(name));
 		JanetBinding j_binding = janet_resolve_ext(janet_env, j_namesym);
 
@@ -171,7 +199,7 @@ get_string_global(char *name, char *buf, size_t sz)
 static float
 get_number_global(char *name)
 {
-	if (mode == M_Fe) {
+	if (lang == LM_Fe) {
 		ssize_t gc = fe_savegc(fe_ctx);
 		fe_Object *var = fe_eval(fe_ctx, fe_symbol(fe_ctx, name));
 		if (fe_type(fe_ctx, var) == FE_TNUMBER) {
@@ -181,7 +209,7 @@ get_number_global(char *name)
 			return 0;
 		}
 		fe_restoregc(fe_ctx, gc);
-	} else if (mode == M_Janet) {
+	} else if (lang == LM_Janet) {
 		JanetSymbol j_namesym = janet_symbol((uint8_t *)name, strlen(name));
 		JanetBinding j_binding = janet_resolve_ext(janet_env, j_namesym);
 
@@ -201,24 +229,100 @@ get_number_global(char *name)
 }
 
 static void
+init_vm(void)
+{
+	// Initialize Janet
+	// {{{
+	janet_init();
+	janet_env = janet_core_env(NULL);
+	janet_cfuns(janet_env, "cel7", janet_apis);
+
+	// Set default values of variables
+	// TODO: set documentation
+	{
+		Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
+		janet_def(janet_env, "title", j_title, "");
+
+		janet_def(janet_env, "width",  janet_wrap_number(config.width), "");
+		janet_def(janet_env, "height", janet_wrap_number(config.height), "");
+		janet_def(janet_env, "scale",  janet_wrap_number(config.scale), "");
+		janet_def(janet_env, "debug",  janet_wrap_boolean(config.debug), "");
+	}
+	// }}}
+
+	// Initialize fe
+	// {{{
+	fe_ctx_data = malloc(FE_CTX_DATA_SIZE);
+	fe_ctx = fe_open(fe_ctx_data, FE_CTX_DATA_SIZE);
+
+	for (size_t i = 0; i < ARRAY_LEN(fe_apis); ++i) {
+		fe_set(
+			fe_ctx,
+			fe_symbol(fe_ctx, fe_apis[i].name),
+			fe_cfunc(fe_ctx, fe_apis[i].func)
+		);
+	}
+
+	// Set default values of variables
+	{
+		fe_Object *objs[3];
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "width");
+		objs[2] = fe_number(fe_ctx, config.width);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "height");
+		objs[2] = fe_number(fe_ctx, config.height);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "scale");
+		objs[2] = fe_number(fe_ctx, config.scale);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "debug");
+		objs[2] = fe_bool(fe_ctx, config.debug);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+	}
+	// }}}
+
+	// Eval inbuilt files
+	for (size_t i = 0; i < ARRAY_LEN(builtin_files); ++i) {
+		FILE *df = ko_fopen(builtin_files[i], "r");
+		assert(df != NULL);
+
+		fseek(df, 0L, SEEK_END);
+		size_t size = ftell(df);
+		fseek(df, 0L, SEEK_SET);
+
+		char *buf = calloc(size, sizeof(char));
+		fread(buf, size, sizeof(char), df);
+		fclose(df);
+		janet_dostring(janet_env, buf, builtin_files[i], NULL);
+	}
+}
+
+static void
 init_mem(void)
 {
-	memory_sz = DISPLAY_START + (500 * 500);
-	memory = malloc(memory_sz);
-	memset(memory, 0x0, memory_sz);
+	memory[BK_Normal] = calloc(MEMORY_SIZE, sizeof(uint8_t));
+	memory[BK_Rom]    = calloc(MEMORY_SIZE, sizeof(uint8_t));
 
 	for (size_t i = 0; i < ARRAY_LEN(colors); ++i) {
 		size_t addr = PALETTE_START + (i * 4);
 		for (size_t b = 0; b < 4; ++b) {
 			size_t byte = colors[i] >> (b * 8);
-			memory[addr + b] = byte & 0xFF;
+			memory[BK_Rom][addr + b] = byte & 0xFF;
 		}
 	}
 
 	for (size_t i = 0; i < ARRAY_LEN(font); ++i) {
 		for (size_t j = 0; j < FONT_WIDTH; ++j) {
 			size_t ch = font[i][j] == 'x' ? 1 : 0;
-			memory[FONT_START + (i * FONT_WIDTH) + j] = ch;
+			memory[BK_Rom][FONT_START + (i * FONT_WIDTH) + j] = ch;
 		}
 	}
 
@@ -227,18 +331,17 @@ init_mem(void)
 static void
 deinit_mem(void)
 {
-	free(memory);
+	for (size_t i = 0; i < BK_COUNT; ++i)
+		free(memory[i]);
 }
 
 static void
 deinit_vm(void)
 {
-	if (mode == M_Fe) {
-		fe_close(fe_ctx);
-		free(fe_ctx_data);
-	} else if (mode == M_Janet) {
-		janet_deinit();
-	}
+	fe_close(fe_ctx);
+	free(fe_ctx_data);
+
+	janet_deinit();
 }
 
 static char
@@ -344,9 +447,9 @@ load(char *user_filename)
 	if (!fileisbin) {
 		char *dot = strrchr(filename, '.');
 		if (dot && !strcmp(dot, ".fe")) {
-			mode = M_Fe;
+			lang = LM_Fe;
 		} else if (dot && !strcmp(dot, ".janet")) {
-			mode = M_Janet;
+			lang = LM_Janet;
 		}
 	}
 
@@ -367,44 +470,7 @@ load(char *user_filename)
 		start = &filebuf[last0 + 1];
 	}
 
-	if (mode == M_Fe) {
-		fe_ctx_data = malloc(FE_CTX_DATA_SIZE);
-		fe_ctx = fe_open(fe_ctx_data, FE_CTX_DATA_SIZE);
-
-		for (size_t i = 0; i < ARRAY_LEN(fe_apis); ++i) {
-			fe_set(
-				fe_ctx,
-				fe_symbol(fe_ctx, fe_apis[i].name),
-				fe_cfunc(fe_ctx, fe_apis[i].func)
-			);
-		}
-
-		// Set default values of variables
-		{
-			fe_Object *objs[3];
-
-			objs[0] = fe_symbol(fe_ctx, "=");
-			objs[1] = fe_symbol(fe_ctx, "width");
-			objs[2] = fe_number(fe_ctx, config.width);
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-
-			objs[0] = fe_symbol(fe_ctx, "=");
-			objs[1] = fe_symbol(fe_ctx, "height");
-			objs[2] = fe_number(fe_ctx, config.height);
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-
-			objs[0] = fe_symbol(fe_ctx, "=");
-			objs[1] = fe_symbol(fe_ctx, "scale");
-			objs[2] = fe_number(fe_ctx, config.scale);
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-
-			objs[0] = fe_symbol(fe_ctx, "=");
-			objs[1] = fe_symbol(fe_ctx, "debug");
-			objs[2] = fe_bool(fe_ctx, config.debug);
-			fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-		}
-
-
+	if (lang == LM_Fe) {
 		ssize_t gc = fe_savegc(fe_ctx);
 		while (true) {
 			fe_Object *obj = fe_read(fe_ctx, _fe_read, (void *)&start);
@@ -419,22 +485,6 @@ load(char *user_filename)
 			fe_restoregc(fe_ctx, gc);
 		}
 	} else {
-		janet_init();
-		janet_env = janet_core_env(NULL);
-		janet_cfuns(janet_env, "cel7", janet_apis);
-
-		// Set default values of variables
-		// TODO: set documentation
-		{
-			Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
-			janet_def(janet_env, "title", j_title, "");
-
-			janet_def(janet_env, "width",  janet_wrap_number(config.width), "");
-			janet_def(janet_env, "height", janet_wrap_number(config.height), "");
-			janet_def(janet_env, "scale",  janet_wrap_number(config.scale), "");
-			janet_def(janet_env, "debug",  janet_wrap_boolean(config.debug), "");
-		}
-
 		janet_dostring(janet_env, start, filename, NULL);
 	}
 
@@ -447,6 +497,8 @@ load(char *user_filename)
 static void
 draw(void)
 {
+	// TODO: ensure in correct bank
+
 	uint32_t *pixels;
 	int       pitch;
 
@@ -455,27 +507,27 @@ draw(void)
 	for (size_t dy = 0; dy < config.height; ++dy) {
 		for (size_t dx = 0; dx < config.width; ++dx) {
 			size_t addr = DISPLAY_START + ((dy * config.width + dx) * 2);
-			size_t ch   = (memory[addr + 0]);
-			size_t fg_i = (memory[addr + 1] >> 0) & 0xF;
-			size_t bg_i = (memory[addr + 1] >> 4) & 0xF;
+			size_t ch   = (memory[BK_Normal][addr + 0]);
+			size_t fg_i = (memory[BK_Normal][addr + 1] >> 0) & 0xF;
+			size_t bg_i = (memory[BK_Normal][addr + 1] >> 4) & 0xF;
 
 			// Handle unprintable chars
 			if (ch < 32 || ch > 126)
 				ch = FONT_FALLBACK_GLYPH;
 
 			size_t bg_addr = PALETTE_START + (bg_i * 4);
-			size_t bg = decode_u32_from_bytes(&memory[bg_addr]);
+			size_t bg = decode_u32_from_bytes(&memory[BK_Normal][bg_addr]);
 			bg = (bg << 8) | 0xFF; // Add alpha
 
 			size_t fg_addr = PALETTE_START + (fg_i * 4);
-			size_t fg = decode_u32_from_bytes(&memory[fg_addr]);
+			size_t fg = decode_u32_from_bytes(&memory[BK_Normal][fg_addr]);
 			fg = (fg << 8) | 0xFF; // Add alpha
 
 			size_t font = FONT_START + ((ch - 32) * FONT_WIDTH * FONT_HEIGHT);
 
 			for (size_t fy = 0; fy < FONT_HEIGHT; ++fy) {
 				for (size_t fx = 0; fx < FONT_WIDTH; ++fx) {
-					size_t font_ch = memory[font + (fy * FONT_WIDTH + fx)];
+					size_t font_ch = memory[BK_Normal][font + (fy * FONT_WIDTH + fx)];
 					size_t color = font_ch ? fg : bg;
 					pixels[(((dy * FONT_HEIGHT) + fy) * (config.width * FONT_WIDTH) + ((dx * FONT_WIDTH) + fx))] = color;
 				}
@@ -524,8 +576,6 @@ keyname(size_t kcode)
 static void
 run(void)
 {
-	call_func("init", "");
-
 	SDL_Event ev;
 
 	while (SDL_WaitEvent(&ev) && !quit) {
@@ -534,7 +584,7 @@ run(void)
 			quit = true;
 		} break; case SDL_KEYDOWN: {
 			ssize_t kcode = ev.key.keysym.sym;
-			call_func("keydown", "s", keyname(kcode));
+			call_func(callbacks[mode.cur][SC_keydown], "s", keyname(kcode));
 		} break; case SDL_KEYUP: {
 			ssize_t kcode = ev.key.keysym.sym;
 
@@ -542,20 +592,25 @@ run(void)
 			break; case SDLK_ESCAPE:
 				quit = true;
 			break; default: {
-				call_func("keyup", "s", keyname(kcode));
+				call_func(callbacks[mode.cur][SC_keyup], "s", keyname(kcode));
 			} break;
 			}
 		} break; case SDL_MOUSEMOTION: {
       			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;
       			double cely = (((double)ev.button.y) / FONT_HEIGHT) / config.scale;
-			call_func("mouse", "snnn", "motion", (double)1, celx, cely);
+			call_func(callbacks[mode.cur][SC_mouse], "snnn", "motion", (double)1, celx, cely);
 		} break; case SDL_MOUSEBUTTONDOWN: {
       			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;
       			double cely = (((double)ev.button.y) / FONT_HEIGHT) / config.scale;
-			call_func("mouse", "snnn", mouse_button_strs[ev.button.button],
+			call_func(callbacks[mode.cur][SC_mouse], "snnn", mouse_button_strs[ev.button.button],
 				(double)ev.button.clicks, celx, cely);
 		} break; case SDL_USEREVENT: {
-			call_func("step", "");
+			if (!mode.inited[mode.cur]) {
+				call_func(callbacks[mode.cur][SC_init], "");
+				mode.inited[mode.cur] = true;
+			}
+
+			call_func(callbacks[mode.cur][SC_step], "");
 			draw();
 
 			// Flush user events that may have accumulated if step()
@@ -585,6 +640,7 @@ main(int argc, char **argv)
 
 	srand(time(NULL));
 
+	init_vm();
 	init_mem();
 	load(*argv);
 
