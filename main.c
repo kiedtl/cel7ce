@@ -63,6 +63,12 @@ struct Mode mode = {
 
 enum LangMode lang = LM_Fe;
 
+// XXX: delays set in one mode continue through mode switches in purpose.
+// (This is so that the startup animation code can sleep a bit before
+// continuing with the cartridge execution.)
+struct timeval delay_set = {0};
+struct timeval delay_val = {0};
+
 uint8_t *memory[BK_COUNT] = {0};
 size_t bank = BK_Normal;
 size_t color = 1;
@@ -379,13 +385,27 @@ run(void)
 			call_func(callbacks[c_mode][SC_mouse], "snnn", mouse_button_strs[ev.button.button],
 				(double)ev.button.clicks, celx, cely);
 		} break; case SDL_USEREVENT: {
-			if (!mode.inited[c_mode]) {
-				call_func(callbacks[c_mode][SC_init], "");
-				mode.inited[c_mode] = true;
+			_Bool has_delay = timerisset(&delay_val);
+
+			struct timeval cur_time;
+			struct timeval diff;
+
+			if (has_delay) {
+				gettimeofday(&cur_time, NULL);
+				timeradd(&delay_set, &delay_val, &diff);
 			}
 
-			call_func(callbacks[c_mode][SC_step], "");
-			draw();
+			if (!has_delay || timercmp(&cur_time, &diff, >)) {
+				if (has_delay) timerclear(&delay_val);
+
+				if (!mode.inited[c_mode]) {
+					call_func(callbacks[c_mode][SC_init], "");
+					mode.inited[c_mode] = true;
+				}
+
+				call_func(callbacks[c_mode][SC_step], "");
+				draw();
+			}
 
 			// Flush user events that may have accumulated if step()
 			// took too long

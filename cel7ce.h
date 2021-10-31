@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <SDL.h>
+#include <sys/time.h>
+
 #include "fe.h"
 #include "janet.h"
 
@@ -83,6 +85,11 @@ enum LangMode {
 extern struct Config config;
 extern struct Mode mode;
 
+extern enum LangMode lang;
+
+extern struct timeval delay_set;
+extern struct timeval delay_val;
+
 extern uint8_t *memory[BK_COUNT];
 extern size_t bank;
 extern size_t color;
@@ -92,14 +99,12 @@ extern void *fe_ctx_data;
 extern fe_Context *fe_ctx;
 extern bool quit;
 
-extern enum LangMode lang;
-
 extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
-extern const struct JanetReg janet_apis[12];
+extern const struct JanetReg janet_apis[13];
 extern const struct ApiFunc fe_apis[16];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);

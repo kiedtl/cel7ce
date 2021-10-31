@@ -17,6 +17,7 @@
 
 (var n 0)
 (defn I_START_step []
+  (delay 0.1)
   (++ n)
   (cond
     (< n 5)
@@ -27,4 +28,6 @@
         (color 0)
         (fill 0 0 width height " "))
     (> n 8)
-      (swimd 1)))
+      (do
+        (swimd 1)
+        (delay 0.3))))

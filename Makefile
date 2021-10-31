@@ -42,7 +42,8 @@ WARNING  = -Wall -Wpedantic -Wextra -Wold-style-definition -Wmissing-prototypes 
 	   -Werror=implicit-function-declaration -Werror=return-type \
 	   -Wno-newline-eof -Wno-language-extension-token
 
-DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE -D_GNU_SOURCE
+DEF      = -DVERSION=\"$(VERSION)\" -D_XOPEN_SOURCE=1000 -D_DEFAULT_SOURCE \
+	   -D_GNU_SOURCE -D_POSIX_C_SOURCE=199309L
 INCL     = -Ithird_party/fe/src/ -Ithird_party/janet/ -Ithird_party/koio/include/ -I.
 
 # Defines:

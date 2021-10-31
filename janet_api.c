@@ -1,3 +1,6 @@
+#include <math.h>
+#include <sys/time.h>
+
 #include "cel7ce.h"
 #include "janet.h"
 
@@ -166,7 +169,20 @@ janet_username(int32_t argc, Janet *argv)
 	return janet_stringv(u, strlen((char *)u));
 }
 
-const struct JanetReg janet_apis[12] = {
+static Janet
+janet_delay(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 1);
+	double delay = janet_getnumber(argv, 0);
+
+	delay_val.tv_sec  = (time_t)round(delay);
+	delay_val.tv_usec = (suseconds_t)((delay - round(delay)) * 1000000);
+	gettimeofday(&delay_set, NULL);
+
+	return janet_wrap_nil();
+}
+
+const struct JanetReg janet_apis[13] = {
 	{    "swibnk",   janet_swibnk, "" },
 	{     "swimd",    janet_swimd, "" },
 	{      "quit",     janet_quit, "" },
@@ -178,6 +194,7 @@ const struct JanetReg janet_apis[12] = {
 	{     "c7get",  janet_cel7get, "" },
 	{      "fill",     janet_fill, "" },
 	{  "username", janet_username, "" },
+	{     "delay",    janet_delay, "" },
 
 	// Include a null sentinel, because janet_cfunc is too braindamaged
 	// to take a "sz" parameter.
