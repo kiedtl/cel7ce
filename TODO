@@ -1,30 +1,23 @@
+- Switch to meson/muon + ninja/samurai for build system
 - Fix key naming
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Remove duplicated code between Janet/Fe APIs
-    - Should combine files?
-  - Add bitwise operators as functions
-  - Lock down Janet's OS module?
+  - Lock down or remove Janet's stdlib
   - Improve Janet docs
     - Note that one must call janet_string before janet_wrap_string
     - Document janet_def and janet_resolve
     - Provide example of pcall + error handling
-- ESC menu (as with TIC-80?) (needs minimum screen size)
+- ESC menu as with TIC-80 (needs minimum screen size)
+  - menuitem() API
   - about screen (cel7ce source, homepage, repo, etc)
   - reload cartridge
   - view cartridge source
   - view cartridge info (author, date, etc)
 - Show errors on display
-- Create default ROM that has LOAD/repl commands?
-- Nice splash screen
-- Cartridge format (gif? png?)
-  - Consider adding a form of persistent storage on the cartridge
-    and use for storing highscores in snake demo
-- Delay timer/callbacks?
+- Cartridges (.bmp or .gif)
+  - "Block filesystem" on cartridge for storing highscores
+    - Writing data to block changes cartridge look
 - Retrieve source for tetris
-- End-user configuration:
-	- CEL7_CLOCKSPEED
-	- CEL7_SKIPSPLASH
-	- CEL7_DEBUG
 - Joystick support?
-- FreeBSD support
+- FreeBSD/OpenBSD support
