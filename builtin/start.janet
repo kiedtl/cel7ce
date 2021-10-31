@@ -15,10 +15,9 @@
       (color (+ 1 (rand 14)))
       (c7put x y (string/from-bytes (+ 20 (rand 96)))))))
 
-(var n 0)
 (defn I_START_step []
   (delay 0.1)
-  (++ n)
+  (def n (ticks))
   (cond
     (< n 5)
       (loop [i :range [0x4040 0x52a0]]

@@ -56,6 +56,7 @@ struct Mode {
 		MT_COUNT,
 	} cur;
 	_Bool inited[MT_COUNT];
+	size_t steps[MT_COUNT];
 };
 
 struct ApiFunc {
@@ -104,8 +105,8 @@ extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
-extern const struct JanetReg janet_apis[13];
-extern const struct ApiFunc fe_apis[17];
+extern const struct JanetReg janet_apis[14];
+extern const struct ApiFunc fe_apis[18];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);
 char *get_username(void);

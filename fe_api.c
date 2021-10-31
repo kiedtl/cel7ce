@@ -213,7 +213,14 @@ fe_delay(fe_Context *ctx, fe_Object *arg)
 	return fe_bool(ctx, 0);
 }
 
-const struct ApiFunc fe_apis[17] = {
+static fe_Object *
+fe_ticks(fe_Context *ctx, fe_Object *arg)
+{
+	UNUSED(arg);
+	return fe_number(ctx, (float)mode.steps[mode.cur]);
+}
+
+const struct ApiFunc fe_apis[18] = {
 	{        "//",    fe_divide },
 	{         "%",   fe_modulus },
 	{      "quit",      fe_quit },
@@ -231,4 +238,5 @@ const struct ApiFunc fe_apis[17] = {
 	{ "num->char",    fe_num2ch },
 	{  "username",  fe_username },
 	{     "delay",     fe_delay },
+	{     "ticks",     fe_ticks },
 };

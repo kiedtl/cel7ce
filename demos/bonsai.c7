@@ -101,7 +101,6 @@
 ))
 
 (= init (fn ()
-    (= steps        0)
     (= branches     0)
     (= shoots       0)
     (= max-branches (* multiplier 110))
@@ -160,7 +159,7 @@
     (if stack
         (do
             (let str "growing...")
-            (let ind (% (// steps 2) (strlen str)))
+            (let ind (% (// (ticks) 2) (strlen str)))
 
             (color 15)
             (put 1 1 str)
@@ -176,7 +175,6 @@
         )
     )
 
-    (= steps (+ steps 1))
 ))
 
 (= queue (fn (x y type life)

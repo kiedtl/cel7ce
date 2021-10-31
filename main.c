@@ -398,6 +398,8 @@ run(void)
 			if (!has_delay || timercmp(&cur_time, &diff, >)) {
 				if (has_delay) timerclear(&delay_val);
 
+				++mode.steps[c_mode];
+
 				if (!mode.inited[c_mode]) {
 					call_func(callbacks[c_mode][SC_init], "");
 					mode.inited[c_mode] = true;

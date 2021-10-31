@@ -182,7 +182,15 @@ janet_delay(int32_t argc, Janet *argv)
 	return janet_wrap_nil();
 }
 
-const struct JanetReg janet_apis[13] = {
+static Janet
+janet_ticks(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 0);
+	UNUSED(argv);
+	return janet_wrap_number((double)mode.steps[mode.cur]);
+}
+
+const struct JanetReg janet_apis[14] = {
 	{    "swibnk",   janet_swibnk, "" },
 	{     "swimd",    janet_swimd, "" },
 	{      "quit",     janet_quit, "" },
@@ -195,6 +203,7 @@ const struct JanetReg janet_apis[13] = {
 	{      "fill",     janet_fill, "" },
 	{  "username", janet_username, "" },
 	{     "delay",    janet_delay, "" },
+	{     "ticks",    janet_ticks, "" },
 
 	// Include a null sentinel, because janet_cfunc is too braindamaged
 	// to take a "sz" parameter.
