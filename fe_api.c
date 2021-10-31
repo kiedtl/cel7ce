@@ -201,7 +201,19 @@ fe_username(fe_Context *ctx, fe_Object *arg)
 	return fe_string(ctx, get_username());
 }
 
-const struct ApiFunc fe_apis[16] = {
+static fe_Object *
+fe_delay(fe_Context *ctx, fe_Object *arg)
+{
+	double delay = fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+
+	delay_val.tv_sec  = (time_t)round(delay);
+	delay_val.tv_usec = (suseconds_t)((delay - round(delay)) * 1000000);
+	gettimeofday(&delay_set, NULL);
+
+	return fe_bool(ctx, 0);
+}
+
+const struct ApiFunc fe_apis[17] = {
 	{        "//",    fe_divide },
 	{         "%",   fe_modulus },
 	{      "quit",      fe_quit },
@@ -218,4 +230,5 @@ const struct ApiFunc fe_apis[16] = {
 	{ "char->num",    fe_ch2num },
 	{ "num->char",    fe_num2ch },
 	{  "username",  fe_username },
+	{     "delay",     fe_delay },
 };
