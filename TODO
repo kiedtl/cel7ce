@@ -1,23 +1,51 @@
-- Switch to meson/muon + ninja/samurai for build system
+TODO 1.0.0
+-------------
 - Fix key naming
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
-  - Remove duplicated code between Janet/Fe APIs
   - Lock down or remove Janet's stdlib
-  - Improve Janet docs
-    - Note that one must call janet_string before janet_wrap_string
-    - Document janet_def and janet_resolve
-    - Provide example of pcall + error handling
+- Switch to meson/muon + ninja/samurai for build system
+- Cartridges (.bmp or .gif)
+  - "Block filesystem" on cartridge for storing highscores
+    - Writing data to block changes cartridge look
+    - Accessible via additional memory bank
+- Retrieve source for tetris
+
+TODO v1.1.0
+-----------
 - ESC menu as with TIC-80 (needs minimum screen size)
   - menuitem() API
   - about screen (cel7ce source, homepage, repo, etc)
   - reload cartridge
   - view cartridge source
   - view cartridge info (author, date, etc)
-- Show errors on display
-- Cartridges (.bmp or .gif)
-  - "Block filesystem" on cartridge for storing highscores
-    - Writing data to block changes cartridge look
-- Retrieve source for tetris
-- Joystick support?
+
+TODO <future>
+-------------
 - FreeBSD/OpenBSD support
+
+Misc
+----
+- Improve Janet docs
+  - Note that one must call janet_string before janet_wrap_string
+  - Document janet_def and janet_resolve
+  - Provide example of pcall + error handling
+- Improve fe docs
+  - Example for variadic args with cfunction
+
+Ideas
+-----
+- New APIs:
+  - flr()
+  - mid()
+- Joystick support?
+- New memory locations
+  - Raspberry Pi GPIO
+  - Current color(s)
+  - Mode
+  - Height/width/scale
+  - cel7 version
+- Builtin console
+  - Might be too difficult due to variadic window sizing
+- Token limits, as with PICO-8
+  - Interesting, but a bit un-cel7y
