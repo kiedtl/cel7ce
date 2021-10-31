@@ -80,26 +80,11 @@ static void
 init_vm(void)
 {
 	// Initialize Janet
-	// {{{
 	janet_init();
 	janet_env = janet_core_env(NULL);
 	janet_cfuns(janet_env, "cel7", janet_apis);
 
-	// Set default values of variables
-	// TODO: set documentation
-	{
-		Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
-		janet_def(janet_env, "title", j_title, "");
-
-		janet_def(janet_env, "width",  janet_wrap_number(config.width), "");
-		janet_def(janet_env, "height", janet_wrap_number(config.height), "");
-		janet_def(janet_env, "scale",  janet_wrap_number(config.scale), "");
-		janet_def(janet_env, "debug",  janet_wrap_boolean(config.debug), "");
-	}
-	// }}}
-
 	// Initialize fe
-	// {{{
 	fe_ctx_data = malloc(FE_CTX_DATA_SIZE);
 	fe_ctx = fe_open(fe_ctx_data, FE_CTX_DATA_SIZE);
 
@@ -109,47 +94,6 @@ init_vm(void)
 			fe_symbol(fe_ctx, fe_apis[i].name),
 			fe_cfunc(fe_ctx, fe_apis[i].func)
 		);
-	}
-
-	// Set default values of variables
-	{
-		fe_Object *objs[3];
-
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "width");
-		objs[2] = fe_number(fe_ctx, config.width);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "height");
-		objs[2] = fe_number(fe_ctx, config.height);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "scale");
-		objs[2] = fe_number(fe_ctx, config.scale);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-
-		objs[0] = fe_symbol(fe_ctx, "=");
-		objs[1] = fe_symbol(fe_ctx, "debug");
-		objs[2] = fe_bool(fe_ctx, config.debug);
-		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
-	}
-	// }}}
-
-	// Eval inbuilt files
-	for (size_t i = 0; i < ARRAY_LEN(builtin_files); ++i) {
-		FILE *df = ko_fopen(builtin_files[i], "r");
-		assert(df != NULL);
-
-		fseek(df, 0L, SEEK_END);
-		size_t size = ftell(df);
-		fseek(df, 0L, SEEK_SET);
-
-		char *buf = calloc(size, sizeof(char));
-		fread(buf, size, sizeof(char), df);
-		fclose(df);
-		janet_dostring(janet_env, buf, builtin_files[i], NULL);
 	}
 }
 
@@ -174,6 +118,72 @@ init_mem(void)
 		}
 	}
 
+}
+
+// Set values of config variables in scripting VMs to the values in `config.*`.
+// This is run twice. The first time, `config.*` contains the default values,
+// so it sets the default values; the second time, `config.*` contains the
+// user-provided values, thus re-setting the config values in order to
+// propagate the new values across both VMs.
+//
+static void
+set_vals(void)
+{
+	// Janet
+	// TODO: set documentation
+	{
+		Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
+		janet_def(janet_env, "title", j_title, "");
+
+		janet_def(janet_env, "width",  janet_wrap_number(config.width), "");
+		janet_def(janet_env, "height", janet_wrap_number(config.height), "");
+		janet_def(janet_env, "scale",  janet_wrap_number(config.scale), "");
+		janet_def(janet_env, "debug",  janet_wrap_boolean(config.debug), "");
+	}
+
+	// Fe
+	{
+		fe_Object *objs[3];
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "width");
+		objs[2] = fe_number(fe_ctx, config.width);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "height");
+		objs[2] = fe_number(fe_ctx, config.height);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "scale");
+		objs[2] = fe_number(fe_ctx, config.scale);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+
+		objs[0] = fe_symbol(fe_ctx, "=");
+		objs[1] = fe_symbol(fe_ctx, "debug");
+		objs[2] = fe_bool(fe_ctx, config.debug);
+		fe_eval(fe_ctx, fe_list(fe_ctx, objs, ARRAY_LEN(objs)));
+	}
+}
+
+// Eval inbuilt files
+static void
+load_builtins(void)
+{
+	for (size_t i = 0; i < ARRAY_LEN(builtin_files); ++i) {
+		FILE *df = ko_fopen(builtin_files[i], "r");
+		assert(df != NULL);
+
+		fseek(df, 0L, SEEK_END);
+		size_t size = ftell(df);
+		fseek(df, 0L, SEEK_SET);
+
+		char *buf = calloc(size, sizeof(char));
+		fread(buf, size, sizeof(char), df);
+		fclose(df);
+		janet_dostring(janet_env, buf, builtin_files[i], NULL);
+	}
 }
 
 static void
@@ -404,9 +414,12 @@ main(int argc, char **argv)
 
 	srand(time(NULL));
 
-	init_vm();
 	init_mem();
+	init_vm();
+	set_vals();
 	load(*argv);
+	load_builtins();
+	set_vals();
 
 	bool sdl_error = !init_sdl();
 	if (sdl_error) errx(1, "SDL error: %s\n", SDL_GetError());
