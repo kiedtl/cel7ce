@@ -5,14 +5,15 @@ TODO 1.0.0
   - Add "shebang" to allow janet code to be embedded in binary
   - Lock down or remove Janet's stdlib
 - Switch to meson/muon + ninja/samurai for build system
-- Cartridges (.bmp or .gif)
-  - "Block filesystem" on cartridge for storing highscores
-    - Writing data to block changes cartridge look
-    - Accessible via additional memory bank
 - Retrieve source for tetris
 
 TODO v1.1.0
 -----------
+- Cartridges (.bmp or .gif)
+  - "Block filesystem" on cartridge for storing highscores
+    - Writing data to block changes cartridge look
+    - Accessible via additional memory bank
+  - Tape/floppy look
 - ESC menu as with TIC-80 (needs minimum screen size)
   - menuitem() API
   - about screen (cel7ce source, homepage, repo, etc)
@@ -38,6 +39,7 @@ Ideas
 - New APIs:
   - flr()
   - mid()
+  - camera()
 - Joystick support?
 - New memory locations
   - Raspberry Pi GPIO
@@ -47,5 +49,6 @@ Ideas
   - cel7 version
 - Builtin console
   - Might be too difficult due to variadic window sizing
+- Builtin editor/viewer
 - Token limits, as with PICO-8
   - Interesting, but a bit un-cel7y
