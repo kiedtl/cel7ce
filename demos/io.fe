@@ -6,12 +6,6 @@
     (put 1 1 "keydown " k)
 ))
 
-(= input (fn (k)
-    (color 0x01)
-    (fill 0 0 width height " ")
-    (put 1 1 "input " k)
-))
-
 (= mouse (fn (type evnum x y)
     (color 0x01)
     (fill 0 0 width height " ")
