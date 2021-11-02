@@ -14,6 +14,8 @@
     (loop [x :range [0 width]]
       (color (+ 1 (rand 14)))
       (c7put x y (string/from-bytes (+ 32 (rand 56))))))
+
+  # Draw text.
   (color 1)
   (let [x    (- (// width 2) (// (length errorstr) 2))
         y    (// height 2)

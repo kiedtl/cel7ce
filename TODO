@@ -4,8 +4,14 @@ x Fix key naming
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Lock down or remove Janet's stdlib
-- Switch to meson/muon + ninja/samurai for build system
+- Cleanly throw errors
+  - Invalid API calls
+  - Bad memory bank accesses
+  - Invalid config values
+- Cleanly throw errors on invalid API calls
+- Get new font
 - Retrieve source for tetris
+- Switch to meson/muon + ninja/samurai for build system
 
 TODO v1.1.0
 -----------

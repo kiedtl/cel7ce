@@ -1,0 +1,41 @@
+; vim: ts=4 sts=4 sw=4 expandtab
+
+(= title "cel7ce")
+(= width  16)
+(= height 16)
+
+(= msg " no cartridge ")
+(= pad "              ")
+
+(= init (fn ()
+    # Put random characters everywhere, excluding lowercase
+    (let y 0)
+    (while (< y height)
+        (let x 0)
+        (while (< x width)
+            (color (+ 1 (rand 14)))
+            (put x y (num->char (+ 32 (rand 56))))
+            (= x (+ x 1))
+        )
+        (= y (+ y 1))
+    )
+
+    (color 1)
+    (do
+        (let x (- (// width 2) (// (strlen msg) 2)))
+        (let y (// height 2))
+        (put x (- y 1) pad)
+        (put x (- y 0) msg)
+        (put x (+ y 1) pad)
+    )
+))
+
+(= step (fn ()
+    (delay 1)
+    (let sparsity (* (+ (// (ticks) 7) 1) 7))
+    (let i (+ 0x4040 (* 1 49)))
+    (while (< i (+ 0x4040 (* 56 49)))
+        (poke i (if (is (rand sparsity) 0) 1 0))
+        (= i (+ i 1))
+    )
+))

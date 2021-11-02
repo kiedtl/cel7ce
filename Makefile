@@ -99,11 +99,11 @@ $(KOIO_AR): $(KOIO_OBJ)
 	@printf "    %-8s%s\n" "AR" $@
 	$(CMD)ar rvs $@ $^ >/dev/null
 
-$(BIN): main.c $(OBJ) $(KOIO_AR) def.c7
+$(BIN): main.c $(OBJ) $(KOIO_AR) builtin/default.fe
 	@printf "    %-8s%s\n" "CCLD" $@
 	$(CMD)$(CC) -o $@ $(OBJ) $(KOIO_AR) $(CFLAGS) $(LDFLAGS)
 	$(CMD)printf '\0' >> $(BIN)
-	$(CMD)cat def.c7 >> $(BIN)
+	$(CMD)cat builtin/default.fe >> $(BIN)
 
 .PHONY: clean
 clean:
