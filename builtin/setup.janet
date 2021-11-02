@@ -9,4 +9,6 @@
   (def data (peek 0x4000 (- 0x52a0 0x4000)))
   (swibnk 0)
   (poke 0x4000 data)
-  (swimd 2))
+  (swimd 2)
+
+  (color 1))
