@@ -1,6 +1,6 @@
-TODO 1.0.0
+TODO v1.0.0
 -------------
-- Fix key naming
+x Fix key naming
 - Janet support
   - Add "shebang" to allow janet code to be embedded in binary
   - Lock down or remove Janet's stdlib
@@ -9,6 +9,7 @@ TODO 1.0.0
 
 TODO v1.1.0
 -----------
+- Pass `ctrl` argument to keydown()
 - Cartridges (.bmp or .gif)
   - "Block filesystem" on cartridge for storing highscores
     - Writing data to block changes cartridge look
@@ -52,3 +53,4 @@ Ideas
 - Builtin editor/viewer
 - Token limits, as with PICO-8
   - Interesting, but a bit un-cel7y
+- Up to 7 colors for sprites
