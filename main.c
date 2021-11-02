@@ -460,8 +460,8 @@ main(int argc, char **argv)
 	init_vm();
 	set_vals();
 	load(*argv);
-	load_builtins();
 	set_vals();
+	load_builtins();
 
 	bool sdl_error = !init_sdl();
 	if (sdl_error) errx(1, "SDL error: %s\n", SDL_GetError());
