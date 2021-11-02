@@ -36,20 +36,16 @@ static char *mouse_button_strs[] = {
 
 static char *callbacks[MT_COUNT][SC_COUNT] = {
 	[MT_Start]  = { [SC_init]  = "I_START_init",  [SC_step] = "I_START_step",
-		        [SC_keyup] = "I_START_keyup", [SC_keydown] = "I_START_keydown",
-		        [SC_mouse] = "I_START_mouse"
+		        [SC_keydown] = "I_START_keydown", [SC_mouse] = "I_START_mouse"
 		      },
 	[MT_Setup]  = { [SC_init]  = "I_SETUP_init",  [SC_step] = "I_SETUP_step",
-		        [SC_keyup] = "I_SETUP_keyup", [SC_keydown] = "I_SETUP_keydown",
-		        [SC_mouse] = "I_SETUP_mouse"
+		        [SC_keydown] = "I_SETUP_keydown", [SC_mouse] = "I_SETUP_mouse"
 		      },
 	[MT_Normal] = { [SC_init]  = "init",  [SC_step] = "step",
-		        [SC_keyup] = "keyup", [SC_keydown] = "keydown",
-		        [SC_mouse] = "mouse"
+		        [SC_keydown] = "keydown", [SC_mouse] = "mouse"
 		      },
 	[MT_Error]  = { [SC_init]  = "I_ERROR_init",  [SC_step] = "I_ERROR_step",
-		        [SC_keyup] = "I_ERROR_keyup", [SC_keydown] = "I_ERROR_keydown",
-		        [SC_mouse] = "I_ERROR_mouse"
+		        [SC_keydown] = "I_ERROR_keydown", [SC_mouse] = "I_ERROR_mouse"
 		      },
 };
 
@@ -281,6 +277,7 @@ init_sdl(void)
 		return false;
 
 	SDL_AddTimer(1000 / 30, _sdl_tick, NULL);
+	SDL_StartTextInput();
 
 	return true;
 }
@@ -341,38 +338,6 @@ draw(void)
 	SDL_RenderPresent(renderer);
 }
 
-static const char *
-keyname(size_t kcode)
-{
-	char *sdl_keys[] = {
-		[SDLK_ESCAPE]  = "escape",
-		[SDLK_RETURN]  = "enter",
-		[SDLK_a]       = "a", [SDLK_b]      = "b", [SDLK_c]      = "c",
-		[SDLK_d]       = "d", [SDLK_e]      = "e", [SDLK_f]      = "f",
-		[SDLK_g]       = "g", [SDLK_h]      = "h", [SDLK_i]      = "i",
-		[SDLK_j]       = "j", [SDLK_k]      = "k", [SDLK_l]      = "l",
-		[SDLK_m]       = "m", [SDLK_n]      = "n", [SDLK_o]      = "o",
-		[SDLK_p]       = "p", [SDLK_q]      = "q", [SDLK_r]      = "r",
-		[SDLK_s]       = "s", [SDLK_t]      = "t", [SDLK_u]      = "u",
-		[SDLK_v]       = "v", [SDLK_w]      = "w", [SDLK_x]      = "x",
-		[SDLK_y]       = "y", [SDLK_z]      = "z"
-	};
-
-	switch (kcode) {
-	break; case SDLK_UP:    return "up";
-	break; case SDLK_DOWN:  return "down";
-	break; case SDLK_LEFT:  return "left";
-	break; case SDLK_RIGHT: return "right";
-	break; case SDLK_F1:    return "f1";
-	break; case SDLK_F2:    return "f2";
-	break; default:
-		if (kcode > ARRAY_LEN(sdl_keys) || !sdl_keys[kcode])
-			return "unknown";
-		return sdl_keys[kcode];
-	break;
-	}
-}
-
 static void
 run(void)
 {
@@ -398,18 +363,37 @@ run(void)
 		switch (ev.type) {
 		break; case SDL_QUIT: {
 			quit = true;
+		} break; case SDL_TEXTINPUT: {
+			call_func("keydown", "s", ev.text.text);
 		} break; case SDL_KEYDOWN: {
-			ssize_t kcode = ev.key.keysym.sym;
-			call_func(callbacks[c_mode][SC_keydown], "s", keyname(kcode));
-		} break; case SDL_KEYUP: {
-			ssize_t kcode = ev.key.keysym.sym;
+			char *name = NULL;
 
+			ssize_t kcode = ev.key.keysym.sym;
 			switch (kcode) {
-			break; case SDLK_ESCAPE:
-				quit = true;
-			break; default: {
-				call_func(callbacks[c_mode][SC_keyup], "s", keyname(kcode));
-			} break;
+			break; case SDLK_ESCAPE: quit = true;
+			break; case SDLK_F1:     name = "f1";
+			break; case SDLK_F2:     name = "f2";
+			break; case SDLK_F3:     name = "f3";
+			break; case SDLK_F4:     name = "f4";
+			break; case SDLK_F5:     name = "f5";
+			break; case SDLK_F6:     name = "f6";
+			break; case SDLK_F7:     name = "f7";
+			break; case SDLK_F8:     name = "f8";
+			break; case SDLK_F9:     name = "f9";
+			break; case SDLK_F10:    name = "f10";
+			break; case SDLK_F11:    name = "f11";
+			break; case SDLK_F12:    name = "f12";
+			break; case SDLK_RETURN: name = "enter";
+			break; case SDLK_UP:     name = "up";
+			break; case SDLK_DOWN:   name = "down";
+			break; case SDLK_LEFT:   name = "left";
+			break; case SDLK_RIGHT:  name = "right";
+			break; default:
+			break;
+			}
+
+			if (name) {
+				call_func(callbacks[c_mode][SC_keydown], "s", name);
 			}
 		} break; case SDL_MOUSEMOTION: {
       			double celx = (((double)ev.button.x) /  FONT_WIDTH) / config.scale;

@@ -135,7 +135,7 @@
     (queue x y "trunk" life-start)
 ))
 
-(= keyup (fn (k)
+(= keydown (fn (k)
     (if (is k "r") (init))
 ))
 

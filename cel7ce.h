@@ -68,9 +68,8 @@ struct ApiFunc {
 enum ScriptCallback {
 	SC_init    = 0,
 	SC_step    = 1,
-	SC_keyup   = 2,
-	SC_keydown = 3,
-	SC_mouse   = 4,
+	SC_keydown = 2,
+	SC_mouse   = 3,
 	SC_COUNT,
 };
 

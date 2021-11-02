@@ -37,7 +37,7 @@
     (= anim (+ anim 1))
 ))
 
-(= keyup (fn (k)
+(= keydown (fn (k)
     (= anim 0)
 ))
 

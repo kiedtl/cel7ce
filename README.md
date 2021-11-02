@@ -1,7 +1,7 @@
 # Changes
 
-- `Escape` quits immediately right after executing `keydown`, without executing
-  `keyup`.
+- `Escape` quits immediately right before executing `keydown`.
+- `keyup` was removed.
 - The new `scale` config value was added.
 - `demos/hello.c7` was modified to affect scale and text placement.
 - `demos/snake.c7` was modified to comply with stricter requirements (i.e. that
