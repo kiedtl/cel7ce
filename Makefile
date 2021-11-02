@@ -11,7 +11,7 @@ include config.mk
 BIN      = $(NAME)
 SRC      = assets.c janet_api.c fe_api.c font.c util.c \
 	   third_party/fe/src/fe.c third_party/janet/janet.c main.c
-ASSETS   = builtin/start.janet builtin/setup.janet
+ASSETS   = builtin/start.janet builtin/setup.janet builtin/error.janet
 OBJ      = $(SRC:.c=.o)
 
 KOIO_BIN = third_party/koio/build/koio

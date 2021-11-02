@@ -29,6 +29,21 @@ janet_swimd(int32_t argc, Janet *argv)
 // Public APIs.
 
 static Janet
+janet_idivide(int32_t argc, Janet *argv)
+{
+	janet_arity(argc, 2, -1);
+
+	double accm = janet_getnumber(argv, 0);
+
+	for (size_t i = 1; i < (size_t)argc; ++i) {
+		double arg = janet_getnumber(argv, i);
+		accm /= arg;
+	}
+
+	return janet_wrap_number(accm);
+}
+
+static Janet
 janet_quit(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 0);
@@ -190,9 +205,10 @@ janet_ticks(int32_t argc, Janet *argv)
 	return janet_wrap_number((double)mode.steps[mode.cur]);
 }
 
-const struct JanetReg janet_apis[14] = {
+const struct JanetReg janet_apis[15] = {
 	{    "swibnk",   janet_swibnk, "" },
 	{     "swimd",    janet_swimd, "" },
+	{        "//",  janet_idivide, "" },
 	{      "quit",     janet_quit, "" },
 	{      "rand",     janet_rand, "" },
 	{      "poke",     janet_poke, "" },

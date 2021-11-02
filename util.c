@@ -196,6 +196,7 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 
 			if (sig == JANET_SIGNAL_ERROR) {
 				janet_stacktrace(fiber, res);
+				mode.cur = MT_Error;
 			}
 
 			free(args);

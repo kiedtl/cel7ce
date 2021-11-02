@@ -53,6 +53,7 @@ struct Mode {
 		MT_Start  = 0,
 		MT_Setup  = 1,
 		MT_Normal = 2,
+		MT_Error  = 3,
 		MT_COUNT,
 	} cur;
 	_Bool inited[MT_COUNT];
@@ -105,7 +106,7 @@ extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
-extern const struct JanetReg janet_apis[14];
+extern const struct JanetReg janet_apis[15];
 extern const struct ApiFunc fe_apis[18];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);

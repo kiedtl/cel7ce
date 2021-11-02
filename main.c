@@ -17,7 +17,7 @@
 #include "janet.h"
 
 const char *builtin_files[] = {
-	"builtin/start.janet", "builtin/setup.janet"
+	"builtin/start.janet", "builtin/setup.janet", "builtin/error.janet"
 };
 
 static uint32_t colors[] = {
@@ -45,7 +45,11 @@ static char *callbacks[MT_COUNT][SC_COUNT] = {
 	[MT_Normal] = { [SC_init]  = "init",  [SC_step] = "step",
 		        [SC_keyup] = "keyup", [SC_keydown] = "keydown",
 		        [SC_mouse] = "mouse"
-		       },
+		      },
+	[MT_Error]  = { [SC_init]  = "I_ERROR_init",  [SC_step] = "I_ERROR_step",
+		        [SC_keyup] = "I_ERROR_keyup", [SC_keydown] = "I_ERROR_keydown",
+		        [SC_mouse] = "I_ERROR_mouse"
+		      },
 };
 
 struct Config config = {
