@@ -87,6 +87,10 @@ enum LangMode {
 extern struct Config config;
 extern struct Mode mode;
 
+// Should we switch to MT_Error mode after setup?
+// Set to true if there was an error in eval.
+extern _Bool load_error;
+
 extern enum LangMode lang;
 
 extern struct timeval delay_set;
@@ -101,12 +105,14 @@ extern void *fe_ctx_data;
 extern fe_Context *fe_ctx;
 extern bool quit;
 
+extern jmp_buf fe_error_recover;
+
 extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
 extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
-extern const struct JanetReg janet_apis[15];
+extern const struct JanetReg janet_apis[16];
 extern const struct ApiFunc fe_apis[18];
 
 uint32_t decode_u32_from_bytes(uint8_t *bytes);

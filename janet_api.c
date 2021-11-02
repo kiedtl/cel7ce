@@ -8,6 +8,14 @@
 // scripts are written in Janet only.
 
 static Janet
+janet_lderr(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 0);
+	return janet_wrap_boolean(load_error);
+}
+
+
+static Janet
 janet_swibnk(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 1);
@@ -205,7 +213,8 @@ janet_ticks(int32_t argc, Janet *argv)
 	return janet_wrap_number((double)mode.steps[mode.cur]);
 }
 
-const struct JanetReg janet_apis[15] = {
+const struct JanetReg janet_apis[16] = {
+	{     "lderr",    janet_lderr, "" },
 	{    "swibnk",   janet_swibnk, "" },
 	{     "swimd",    janet_swimd, "" },
 	{        "//",  janet_idivide, "" },

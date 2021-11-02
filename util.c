@@ -110,6 +110,14 @@ load(char *user_filename)
 	}
 
 	if (lang == LM_Fe) {
+		ssize_t r = setjmp(fe_error_recover);
+		if (r == 1) {
+			// fe_eval had a tantrum and we longjmp'd from the error
+			// handler we set in init_vm(). Don't continue eval'ing.
+			load_error = true;
+			return;
+		}
+
 		ssize_t gc = fe_savegc(fe_ctx);
 		while (true) {
 			fe_Object *obj = fe_read(fe_ctx, _fe_read, (void *)&start);

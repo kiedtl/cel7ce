@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <SDL.h>
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -64,6 +65,7 @@ struct Mode mode = {
 	.cur = MT_Start,
 	.inited = {0},
 };
+_Bool load_error = false;
 
 enum LangMode lang = LM_Fe;
 
@@ -82,19 +84,37 @@ void *fe_ctx_data = NULL;
 fe_Context *fe_ctx = NULL;
 bool quit = false;
 
+jmp_buf fe_error_recover;
+
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Texture *texture = NULL;
 
 static void
+_fe_error(fe_Context *ctx, const char *err, fe_Object *cl)
+{
+	fprintf(stderr, "fe error: %s\n", err);
+	for (; !fe_isnil(ctx, cl); cl = fe_cdr(ctx, cl)) {
+		char buf[128];
+		fe_tostring(ctx, fe_car(ctx, cl), buf, ARRAY_LEN(buf));
+		fprintf(stderr, "=> %s\n", buf);
+	}
+
+	longjmp(fe_error_recover, 1);
+}
+
+static void
 init_vm(void)
 {
 	// Initialize Janet
+	// {{{
 	janet_init();
 	janet_env = janet_core_env(NULL);
 	janet_cfuns(janet_env, "cel7", janet_apis);
+	// }}}
 
 	// Initialize fe
+	// {{{
 	fe_ctx_data = malloc(FE_CTX_DATA_SIZE);
 	fe_ctx = fe_open(fe_ctx_data, FE_CTX_DATA_SIZE);
 
@@ -105,6 +125,10 @@ init_vm(void)
 			fe_cfunc(fe_ctx, fe_apis[i].func)
 		);
 	}
+
+	fe_Handlers *hnds = fe_handlers(fe_ctx);
+	hnds->error = _fe_error;
+	// }}}
 }
 
 static void
@@ -354,9 +378,17 @@ run(void)
 {
 	SDL_Event ev;
 
-	// Cache current mode for a single cycle. This way, if one callback (say, init())
-	// switches the mode, we won't abruptly run another mode's step() without running
-	// its init().
+	// Jump location for fe's error handler.
+	ssize_t r = setjmp(fe_error_recover);
+	if (r == 1) {
+		// fe_eval had a tantrum and we longjmp'd from the error
+		// handler we set in init_vm(). Switch to error mode and continue.
+		mode.cur = MT_Error;
+	}
+
+	// Cache current mode for a single cycle. This way, if one callback
+	// (say, init()) switches the mode, we won't abruptly run another
+	// mode's step() without running its init().
 	//
 	enum ModeType c_mode;
 
