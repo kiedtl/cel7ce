@@ -37,10 +37,6 @@ Misc
 
 Ideas
 -----
-- New APIs:
-  - flr()
-  - mid()
-  - camera()
 - Joystick support?
 - New memory locations
   - Raspberry Pi GPIO
@@ -54,3 +50,9 @@ Ideas
 - Token limits, as with PICO-8
   - Interesting, but a bit un-cel7y
 - Up to 7 colors for sprites
+  - Would break display format...
+    - Alternative buffer/bank?
+- New APIs:
+  - flr()
+  - mid()
+  - camera()
