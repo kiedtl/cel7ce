@@ -8,3 +8,4 @@ core
 *.lib
 *.dll
 assets.c
+*.bak
