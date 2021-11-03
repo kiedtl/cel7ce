@@ -8,8 +8,7 @@ x Fix key naming
   - Invalid API calls
   - Bad memory bank accesses
   - Invalid config values
-- Cleanly throw errors on invalid API calls
-- Get new font
+x Create and use new font
 - Retrieve source for tetris
 - Switch to meson/muon + ninja/samurai for build system
 
