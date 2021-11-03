@@ -2,7 +2,7 @@ TODO v1.0.0
 -------------
 x Fix key naming
 - Janet support
-  - Add "shebang" to allow janet code to be embedded in binary
+  x Add "shebang" to allow janet code to be embedded in binary
   - Lock down or remove Janet's stdlib
 - Cleanly throw errors
   - Invalid API calls
@@ -57,6 +57,8 @@ Ideas
 - Up to 7 colors for sprites
   - Would break display format...
     - Alternative buffer/bank?
+    - Or optional display mode switching API that changes
+      display buffer layout to work with this...
 - New APIs:
   - flr()
   - mid()

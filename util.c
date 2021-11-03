@@ -83,15 +83,6 @@ load(char *user_filename)
 	}
 
 
-	if (!fileisbin) {
-		char *dot = strrchr(filename, '.');
-		if (dot && !strcmp(dot, ".fe")) {
-			lang = LM_Fe;
-		} else if (dot && !strcmp(dot, ".janet")) {
-			lang = LM_Janet;
-		}
-	}
-
 	struct stat st;
 	ssize_t stat_res = stat(filename, &st);
 	if (stat_res == -1) err(1, "Cannot stat file '%s'", filename);
@@ -107,6 +98,22 @@ load(char *user_filename)
 		for (size_t i = 0; i < (size_t)st.st_size; ++i)
 			if (filebuf[i] == '\0') last0 = i;
 		start = &filebuf[last0 + 1];
+	}
+
+	// Determine language type.
+	if (fileisbin) {
+		if (!strncmp(start, "#janet\n", 7)) {
+			lang = LM_Janet;
+		} else {
+			lang = LM_Fe;
+		}
+	} else {
+		char *dot = strrchr(filename, '.');
+		if (dot && !strcmp(dot, ".fe")) {
+			lang = LM_Fe;
+		} else if (dot && !strcmp(dot, ".janet")) {
+			lang = LM_Janet;
+		}
 	}
 
 	if (lang == LM_Fe) {
