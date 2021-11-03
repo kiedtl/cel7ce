@@ -1,5 +1,5 @@
 TODO v1.0.0
--------------
+-----------
 x Fix key naming
 - Janet support
   x Add "shebang" to allow janet code to be embedded in binary
