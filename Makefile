@@ -9,7 +9,7 @@ VERSION  = 0.1.0
 include config.mk
 
 BIN      = $(NAME)
-SRC      = assets.c janet_api.c fe_api.c font.c util.c \
+SRC      = assets.c font.c janet_api.c fe_api.c util.c \
 	   third_party/fe/src/fe.c third_party/janet/janet.c main.c
 ASSETS   = builtin/start.janet builtin/setup.janet builtin/error.janet
 OBJ      = $(SRC:.c=.o)
@@ -86,6 +86,10 @@ else
 	$(make_object)
 endif
 
+font.c: tools/bdf2c data/font.bdf
+	@printf "    %-8s%s\n" "BDF2C" data/font.bdf
+	$(CMD)tools/bdf2c data/font.bdf >| $@
+
 assets.c: $(ASSETS) $(KOIO_BIN)
 	@printf "    %-8s%s\n" "KOIO" $@
 	$(CMD)third_party/koio/build/koio -o assets.c $(ASSETS)
@@ -108,4 +112,4 @@ $(BIN): main.c $(OBJ) $(KOIO_AR) builtin/default.fe
 .PHONY: clean
 clean:
 	rm -f $(BIN) $(OBJ) $(KOIO_BIN) $(KOIO_AR) $(KOIO_OBJ)
-	rm -f assets.c *.lib *.pdb *.o *.obj
+	rm -f assets.c font.c *.lib *.pdb *.o *.obj

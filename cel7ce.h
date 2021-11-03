@@ -110,7 +110,7 @@ extern SDL_Window *window;
 extern SDL_Renderer *renderer;
 extern SDL_Texture *texture;
 
-extern char font[96 * FONT_HEIGHT][FONT_WIDTH];
+extern const char font[96 * FONT_HEIGHT][FONT_WIDTH];
 extern const struct JanetReg janet_apis[16];
 extern const struct ApiFunc fe_apis[18];
 

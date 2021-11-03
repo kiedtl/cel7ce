@@ -1,11 +1,12 @@
 cel7
 log
 core
+*.bak
 *.exe
 *.o
 *.obj
 *.pdb
 *.lib
 *.dll
+font.c
 assets.c
-*.bak
