@@ -9,6 +9,13 @@ x Fix key naming
   - Bad memory bank accesses
   - Invalid config values
 x Create and use new font
+- Lore
+  - README
+  - Landing page
+  - Documentation
+    - APIs
+    - Sprite format
+    - Color format
 - Retrieve source for tetris
 - Switch to meson/muon + ninja/samurai for build system
 
