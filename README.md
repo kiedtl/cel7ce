@@ -1,16 +1,44 @@
-# Changes
+# cel7: community edition
 
-- `Escape` quits immediately right before executing `keydown`.
-- `keyup` was removed.
-- The new `scale` config value was added.
-- `demos/hello.c7` was modified to affect scale and text placement.
-- `demos/snake.c7` was modified to comply with stricter requirements (i.e. that
-  sprites may not be loaded before init() is called).
-- No errors are given if `(>= (* height width) 2048)`.
+## What
+
+cel7ce is an open-source reimplementation of
+[cel7](https://github.com/kiedtl/cel7). It aims to be a bit more polished and
+feature-rich while being (almost) completely backwards-compatible with the
+original cel7.
+
+### New features
+
+- Support for [janet](https://janet-lang.org)
+- *Two* memory banks.
+- Fancy loading animation.
+- Others I've forgotten.
 - Addition of `strlen`, `strstart`, `char->num`, `num->char`, `strat`,
   `username` functions for fe.
+- A new `scale` script config value.
 
-# License
+### Breaking changes
+
+- `Escape` quits immediately, not executing `keydown`.
+- The `keyup` callback was removed.
+- It is no longer possible to load sprites into memory before init() is
+  called.
+  - `demos/snake.c7` was modified to comply with these requirements.
+
+### Non-breaking changes
+
+- `demos/hello.c7` was modified to affect scale and text placement.
+- No errors are given if `(>= (* height width) 2048)`.
+
+## Why
+
+The original cel7 seems abandoned at present; no updates have been posted in
+a while and many parts are thoroughly undocumented. Additionally, as no
+source code is available, there's no way to run it on platforms that a binary
+isn't provided for, like a Raspberry Pi. Due to these and other issues, I
+decided to do a reimplementation in order to continue the project.
+
+## License
 
 All code, with the exception of `demos/bonsai.c7`, `demos/hello.c7`,
 `demos/glitch.c7`, `demos/maze.c7`, and `demos/snake.c7` are licensed under the
