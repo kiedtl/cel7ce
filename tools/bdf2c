@@ -1,0 +1,153 @@
+#!/usr/bin/env lua5.3
+
+local bdf_magic = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 }
+
+function _collect_helper(vals, fun, i_f, i_s, i_v)
+    local values = { i_f(i_s, i_v) }
+    i_v = values[1]
+    if not i_v then return vals end
+
+    vals[#vals + 1] = fun(table.unpack(values))
+    return _collect_helper(vals, fun, i_f, i_s, i_v)
+end
+
+function id(...) return ... end
+
+function collect(fun, iter)
+    return _collect_helper({}, fun, table.unpack(iter))
+end
+
+local unprintable_names = {
+  [0x0000] = "null",
+  [0x0001] = "start of heading",
+  [0x0002] = "start of text",
+  [0x0003] = "end of text",
+  [0x0004] = "end of transmission",
+  [0x0005] = "enquiry",
+  [0x0006] = "acknowledge",
+  [0x0007] = "bell",
+  [0x0008] = "backspace",
+  [0x0009] = "character tabulation",
+  [0x000A] = "line feed (lf)",
+  [0x000B] = "line tabulation",
+  [0x000C] = "form feed (ff)",
+  [0x000D] = "carriage return (cr)",
+  [0x000E] = "shift out",
+  [0x000F] = "shift in",
+  [0x0010] = "data link escape",
+  [0x0011] = "device control one",
+  [0x0012] = "device control two",
+  [0x0013] = "device control three",
+  [0x0014] = "device control four",
+  [0x0015] = "negative acknowledge",
+  [0x0016] = "synchronous idle",
+  [0x0017] = "end of transmission block",
+  [0x0018] = "cancel",
+  [0x0019] = "end of medium",
+  [0x001A] = "substitute",
+  [0x001B] = "escape",
+  [0x001C] = "information separator four",
+  [0x001D] = "information separator three",
+  [0x001E] = "information separator two",
+  [0x001F] = "information separator one",
+  [0x0020] = "space",
+  [0x007F] = "delete",
+}
+
+font = {}
+font.current     = 0
+font.data        = {}
+font.height      = 0
+font.width       = 0
+font.foundry     = "unknown"
+font.family_name = "unknown"
+
+local function _copyinfo(number)
+    return function(line)
+        local cmd = (line[1]):lower()
+        font[cmd] = line[2]:gsub("\"", "")
+        if number then
+            font[cmd] = tonumber(font[cmd])
+        end
+    end
+end
+
+local handlers = {
+    ["FONTBOUNDINGBOX"] = function(line)
+        font.width  = tonumber(line[2])
+        font.height = tonumber(line[3])
+    end,
+    ["FOUNDRY"] = _copyinfo(),
+    ["FAMILY_NAME"] = _copyinfo(),
+    ["WEIGHT_NAME"] = _copyinfo(),
+    ["SLANT"] = _copyinfo(),
+    ["CHARS"] = _copyinfo(true),
+    
+    ["ENCODING"] = function(line)
+        font.current = tonumber(line[2])
+        font.data[font.current] = {}
+    end,
+    
+    [0] = function(line)
+        local nm = tonumber(line[1], 16)
+    
+        -- if unable to parse, it's a directive we're ignoring
+        if not nm then return end
+    
+        local len = #font.data[font.current]
+        font.data[font.current][len + 1] = nm
+    end,
+
+}
+
+local filename
+if arg[1] then
+    filename = arg[1]
+else
+    io.stderr:write("Error: no filename provided\n")
+    os.exit(1)
+end
+
+local f = assert(io.open(filename, "rb"))
+local data = assert(f:read('*all'))
+
+for line in data:gmatch("([^\n]+)\n?") do
+    local directives = collect(id, {line:gmatch("([^%s]+)%s?")})
+
+    local handler = handlers[directives[1]]
+    if handler then
+        (handler)(directives)
+    else
+        (handlers[0])(directives)
+    end
+end
+
+f:close()
+
+-- ---
+
+print("#include \"cel7ce.h\"")
+print("")
+print("const char font[96 * FONT_HEIGHT][FONT_WIDTH] = {");
+
+for i = 32,127 do
+    local charname = "'" .. utf8.char(i) .. "'"
+    if unprintable_names[i] then charname = unprintable_names[i] end
+    print("\t// " .. charname)
+
+    local glyph = font.data[i] or font.data[32]
+
+    for y = 1, font.height do
+        io.stdout:write("\t\"")
+        for x = 1, font.width do
+            if (glyph[y] & bdf_magic[x]) ~= 0 then
+                io.stdout:write("x")
+            else
+                io.stdout:write(".")
+            end
+        end
+        io.stdout:write("\",\n")
+    end
+end
+
+print("};")
