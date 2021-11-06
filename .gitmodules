@@ -4,3 +4,6 @@
 [submodule "third_party/koio"]
 	path = third_party/koio
 	url = https://git.sr.ht/~sircmpwn/koio
+[submodule "third_party/vec"]
+	path = third_party/vec
+	url = https://github.com/rxi/vec

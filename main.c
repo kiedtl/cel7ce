@@ -3,6 +3,7 @@
 #endif
 
 #include <assert.h>
+#include <gif_lib.h>
 #include <SDL.h>
 #include <setjmp.h>
 #include <stdbool.h>
@@ -16,6 +17,7 @@
 #include "koio.h"
 #include "fe.h"
 #include "janet.h"
+#include "vec.h"
 
 const char *builtin_files[] = {
 	"builtin/start.janet", "builtin/setup.janet", "builtin/error.janet"
@@ -85,6 +87,10 @@ jmp_buf fe_error_recover;
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Texture *texture = NULL;
+
+static _Bool has_recording = false;
+static _Bool is_recording = false;
+static vec_void_t frames;
 
 static void
 _fe_error(fe_Context *ctx, const char *err, fe_Object *cl)
@@ -279,6 +285,8 @@ init_sdl(void)
 	SDL_AddTimer(1000 / 30, _sdl_tick, NULL);
 	SDL_StartTextInput();
 
+	vec_init(&frames);
+
 	return true;
 }
 
@@ -289,6 +297,14 @@ deinit_sdl(void)
 	if (renderer != NULL) { SDL_DestroyRenderer(renderer);    }
 	if (window   != NULL) { SDL_DestroyWindow(window);	  }
 	SDL_Quit();
+
+	int i;
+	uint32_t *frame;
+	vec_foreach(&frames, frame, i) {
+		free(frame);
+	}
+
+	vec_deinit(&frames);
 }
 
 static void
@@ -298,6 +314,14 @@ draw(void)
 
 	uint32_t *pixels;
 	int       pitch;
+
+	uint32_t *frame = NULL;
+	if (is_recording) {
+		frame = calloc(
+			config.height * FONT_HEIGHT * config.width * FONT_WIDTH,
+			sizeof(uint32_t)
+		);
+	}
 
 	SDL_LockTexture(texture, NULL, (void *)&pixels, &pitch);
 
@@ -326,7 +350,13 @@ draw(void)
 				for (size_t fx = 0; fx < FONT_WIDTH; ++fx) {
 					size_t font_ch = memory[BK_Normal][font + (fy * FONT_WIDTH + fx)];
 					size_t color = font_ch ? fg : bg;
-					pixels[(((dy * FONT_HEIGHT) + fy) * (config.width * FONT_WIDTH) + ((dx * FONT_WIDTH) + fx))] = color;
+					size_t addr = (((dy * FONT_HEIGHT) + fy) * (config.width * FONT_WIDTH) + ((dx * FONT_WIDTH) + fx));
+					pixels[addr] = color;
+
+					if (is_recording) {
+						assert(frame != NULL);
+						frame[addr] = color;
+					}
 				}
 			}
 		}
@@ -336,6 +366,10 @@ draw(void)
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+
+	if (is_recording) {
+		vec_push(&frames, (void *)frame);
+	}
 }
 
 static void
@@ -370,19 +404,12 @@ run(void)
 
 			ssize_t kcode = ev.key.keysym.sym;
 			switch (kcode) {
+			break; case SDLK_F1: {
+				has_recording = true;
+				is_recording = !is_recording;
+				printf("recording: %s\n", is_recording ? "yes" : "no");
+			}
 			break; case SDLK_ESCAPE: quit = true;
-			break; case SDLK_F1:     name = "f1";
-			break; case SDLK_F2:     name = "f2";
-			break; case SDLK_F3:     name = "f3";
-			break; case SDLK_F4:     name = "f4";
-			break; case SDLK_F5:     name = "f5";
-			break; case SDLK_F6:     name = "f6";
-			break; case SDLK_F7:     name = "f7";
-			break; case SDLK_F8:     name = "f8";
-			break; case SDLK_F9:     name = "f9";
-			break; case SDLK_F10:    name = "f10";
-			break; case SDLK_F11:    name = "f11";
-			break; case SDLK_F12:    name = "f12";
 			break; case SDLK_RETURN: name = "enter";
 			break; case SDLK_UP:     name = "up";
 			break; case SDLK_DOWN:   name = "down";
@@ -438,12 +465,150 @@ run(void)
 	}
 }
 
+static void
+dump_recording(void)
+{
+	assert(has_recording);
+
+	int error = 0;
+
+	time_t t = time(NULL);
+	char fname[128];
+	strftime(fname, sizeof(fname), "recording-%Y%m%d-%H%M%S.gif", localtime(&t));
+
+	size_t g_width = config.width * FONT_WIDTH;
+	size_t g_height = config.height * FONT_HEIGHT;
+
+	GifFileType* g_file = EGifOpenFileName(fname, false, &error);
+	if (!g_file) goto giflib_error;
+
+	// Output image headers.
+	// {{{
+	if (EGifPutScreenDesc(g_file, g_width, g_height, 8, 0, NULL) == GIF_ERROR)
+		goto giflib_error;
+	// }}}
+
+	// Create an image loop with the netscape extension.
+	// See: http://www.vurdalakov.net/misc/gif/netscape-looping-application-extension
+	// {{{
+
+	// nsle:
+	//    "NETSCAPE" == the application identifier
+	//    "2.0"      == application authentication code.
+	char nsle[12] = "NETSCAPE2.0";
+
+	char subblock[] = {
+		1,  // Sub-block id. 1 == identifies the Netscape Looping Extension.
+		0,  // Loop count (high byte).
+		0   // Loop count (low byte).
+	};
+
+	EGifPutExtensionLeader(g_file, APPLICATION_EXT_FUNC_CODE);
+	EGifPutExtensionBlock(g_file, ARRAY_LEN(nsle) - 1, nsle);
+	EGifPutExtensionBlock(g_file, ARRAY_LEN(subblock), subblock);
+	EGifPutExtensionTrailer(g_file);
+
+	int i;
+	uint32_t *frame;
+	vec_foreach(&frames, frame, i) {
+		size_t sz = g_width * g_height;
+
+		GifColorType colors[16] = {0};
+		size_t colors_num = 0;
+
+		GifByteType *g_frame_pixels = calloc(sz, sizeof(GifByteType));
+
+		// Extract palette and create palette-ified frame for gif.
+		for (size_t i = 0; i < sz; ++i) {
+			size_t color_index = (size_t)-1;
+
+			uint32_t cur_color = frame[i];
+			GifColorType g_cur_color = {0};
+			g_cur_color.Red   = (cur_color >> 24) & 0xFF;
+			g_cur_color.Green = (cur_color >> 16) & 0xFF;
+			g_cur_color.Blue  = (cur_color >>  8) & 0xFF;
+
+			// Does the palette already contain this?
+			_Bool contained = false;
+			for (size_t c = 0; c < colors_num; ++c) {
+				if (
+					g_cur_color.Red == colors[c].Red &&
+					g_cur_color.Green == colors[c].Green &&
+					g_cur_color.Blue == colors[c].Blue
+				) {
+					contained = true;
+					color_index = c;
+					break;
+				}
+			}
+
+			if (!contained) {
+				// A frame can only contain up to 16 colors at a time.
+				assert(colors_num < ARRAY_LEN(colors));
+
+				colors[colors_num] = g_cur_color;
+				color_index = colors_num;
+				++colors_num;
+			}
+
+			g_frame_pixels[i] = color_index;
+		}
+
+		// Set delay via graphics control extension.
+		// See spec: http://www.w3.org/Graphics/GIF/spec-gif89a.txt
+		//
+		// {{{
+		uint8_t gce_str[] = {
+			0x04, // length of gce_str
+			0x00, // misc packed fields (unused)
+			0x00, // delay time, 1/100 seconds (u16, continued below)
+			0x03, // ...
+		};
+
+		if (EGifPutExtension(
+			g_file,
+			GRAPHICS_EXT_FUNC_CODE,
+			ARRAY_LEN(gce_str),
+			gce_str
+		) == GIF_ERROR)
+			goto giflib_error;
+		// }}}
+
+		// Put frame headers.
+		if (EGifPutImageDesc(
+			g_file,
+			0, 0, g_width, g_height,
+			false,
+			GifMakeMapObject(ARRAY_LEN(colors), colors)
+		) == GIF_ERROR) goto giflib_error;
+
+		// Put frame, row-wise.
+		for (size_t rowptr = 0; rowptr < sz; rowptr += g_width) {
+			if (EGifPutLine(
+				g_file, &g_frame_pixels[rowptr], g_width
+			) == GIF_ERROR) goto giflib_error;
+		}
+	}
+
+	EGifCloseFile(g_file, &error);
+	fprintf(stderr, "Saved %s\n", fname);
+
+	return;
+
+giflib_error:
+	warnx("couldn't save recording to '%s': error %d: %s",
+		fname, error, GifErrorString(error));
+}
+
 int
 main(int argc, char **argv)
 {
 	ARGBEGIN {
 	break; case 'd':
 		config.debug = !config.debug;
+	break; case 'r':
+		is_recording = true;
+		has_recording = true;
 	break; case 'v': case 'V':
 		printf("cel7ce v"VERSION"\n");
 		return 0;
@@ -467,6 +632,8 @@ main(int argc, char **argv)
 	if (sdl_error) errx(1, "SDL error: %s\n", SDL_GetError());
 
 	run();
+
+	if (has_recording) dump_recording();
 
 	deinit_vm();
 	deinit_sdl();
