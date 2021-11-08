@@ -51,6 +51,7 @@ TODO <future>
 - FreeBSD support
 - OpenBSD support
   - pledge/unveil usage
+- web version
 
 Misc
 ----
