@@ -297,19 +297,23 @@ get_number_global(char *name)
 }
 
 void __attribute__((format(printf, 2, 3)))
-fe_errorf(fe_Context *ctx, const char *fmt, ...)
+raise_errorf(enum LangMode lang, const char *fmt, ...)
 {
-        static char buf[512];
+	static char buf[512];
 
-        memset(buf, 0x0, sizeof(buf));
+	memset(buf, 0x0, sizeof(buf));
 
-        va_list ap;
-        va_start(ap, fmt);
-        ssize_t len = vsnprintf(buf, sizeof(buf), fmt, ap);
-        va_end(ap);
-        assert((size_t) len < sizeof(buf));
+	va_list ap;
+	va_start(ap, fmt);
+	ssize_t len = vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+	assert((size_t) len < sizeof(buf));
 
-        fe_error(ctx, buf);
+	if (lang == LM_Fe) {
+		fe_error(fe_ctx, buf);
+	} else if (lang == LM_Janet) {
+		janet_panic(buf);
+	}
 }
 
 // Check a user-provided address and ensure that
@@ -319,24 +323,14 @@ fe_errorf(fe_Context *ctx, const char *fmt, ...)
 void
 check_user_address(enum LangMode lm, size_t addr, size_t sz, _Bool write)
 {
-#define SCRIPT_ERROR(lm, fmt, ...) \
-	switch (lm) {                                                \
-	break; case LM_Janet: janet_panicf(fmt, __VA_ARGS__);        \
-	break; case LM_Fe:    fe_errorf(fe_ctx, fmt, __VA_ARGS__);   \
-	break; default:       unreachable();                         \
-	break;                                                       \
-	}
-
 	if ((write && bank == BK_Rom) || (addr + sz) >= MEMORY_SIZE) {
 		char *action = write ? "writeable" : "readable";
 
 		if (sz == 1) {
-			SCRIPT_ERROR(lm, "Address [%d]0x%04X not %s.", bank, addr, action);
+			raise_errorf(lm, "Address [%d]0x%04X not %s.", bank, addr, action);
 		} else {
-			SCRIPT_ERROR(lm, "Address [%d]0x%04X...%04X not %s.",
+			raise_errorf(lm, "Address [%d]0x%04X...%04X not %s.",
 				bank, addr, addr + (sz - 1), action);
 		}
 	}
-
-#undef SCRIPT_ERROR
 }

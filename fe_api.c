@@ -24,7 +24,7 @@ fe_modulus(fe_Context *ctx, fe_Object *arg)
 	ssize_t b = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
 	if (b == 0) {
-		fe_errorf(ctx, "Tried to divide %d by zero", a);
+		fe_errorf("Tried to divide %d by zero", a);
 	}
 
 	return fe_number(ctx, (float)(a % b));
@@ -44,7 +44,7 @@ fe_rand(fe_Context *ctx, fe_Object *arg)
 	ssize_t n = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
 	if (n == 0) {
-		fe_errorf(ctx, "Expected non-zero argument.");
+		fe_errorf("Expected non-zero argument.");
 	}
 
 	return fe_number(ctx, (float)(rand() % n));
@@ -110,7 +110,7 @@ fe_put(fe_Context *ctx, fe_Object *arg)
 	static char buf[MEMORY_SIZE];
 
 	if (bank == BK_Rom) {
-		fe_errorf(ctx, "Cannot write to bank.");
+		fe_errorf("Cannot write to bank.");
 	}
 
 	size_t sx = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
@@ -148,7 +148,7 @@ static fe_Object *
 fe_fill(fe_Context *ctx, fe_Object *arg)
 {
 	if (bank == BK_Rom) {
-		fe_errorf(ctx, "Cannot write to bank.");
+		fe_errorf("Cannot write to bank.");
 	}
 
 	size_t x = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
@@ -232,7 +232,7 @@ fe_delay(fe_Context *ctx, fe_Object *arg)
 	float delay = fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
 	if (delay < 0 || !isnormal(delay)) {
-		fe_errorf(ctx, "Delay %f invalid.", delay);
+		fe_errorf("Delay %f invalid.", delay);
 	}
 
 	delay_val.tv_sec  = (time_t)roundf(delay);
@@ -255,7 +255,7 @@ fe_swibnk(fe_Context *ctx, fe_Object *arg)
 	float bank_arg = fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
 	if (bank_arg < 0 || bank_arg > BK_COUNT) {
-		fe_errorf(ctx, "Cannot switch to bank %.f.", bank_arg);
+		fe_errorf("Cannot switch to bank %.f.", bank_arg);
 	}
 
 	bank = (size_t)bank_arg;
