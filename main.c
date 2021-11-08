@@ -310,8 +310,6 @@ deinit_sdl(void)
 static void
 draw(void)
 {
-	// TODO: ensure in correct bank
-
 	uint32_t *pixels;
 	int       pitch;
 
