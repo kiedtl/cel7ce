@@ -14,20 +14,24 @@
 #include "cel7ce.h"
 #include "fe.h"
 
-_Noreturn void
-unreachable(void)
+void *
+ecalloc(size_t nmemb, size_t size)
 {
-	errx(1, "Entered unreachable code. This is a bug.");
+	void *ptr = calloc(nmemb, size);
+	if (ptr == NULL) err(1, "Couldn't allocate %d chunks %d bytes each");
+	return ptr;
+}
+
+_Noreturn void
+__unreachable(const char *file, const char *func, int line)
+{
+	errx(1, "[BUG] Entered unreachable code at %s:%s:%d.", file, func, line);
 }
 
 char *
 get_username(void)
 {
-#if defined(__linux__)
-	char *u = getenv("USER");
-	if (u == NULL) u = "root";
-	return u;
-#elif defined(_WIN32) || defined(__WIN32__)
+#if defined(_WIN32) || defined(__WIN32__)
 	TCHAR buf[4096];
 	DWORD size = ARRAY_LEN(buf);
  
@@ -35,7 +39,9 @@ get_username(void)
   		return "root";
 	return buf;
 #else
-#error TODO: Non Linux/Windows platforms
+	char *u = getenv("USER");
+	if (u == NULL) u = "root";
+	return u;
 #endif
 }
 
@@ -46,15 +52,6 @@ decode_u32_from_bytes(uint8_t *bytes)
 	for (ssize_t b = 3; b >= 0; --b)
 		accm = (accm << 8) | bytes[b];
 	return accm;
-}
-
-static char
-_fe_read(fe_Context *ctx, void *udata)
-{
-	UNUSED(ctx);
-	char c = **(char **)udata;
-	(*(char **)udata)++;
-	return c;
 }
 
 void
@@ -94,7 +91,7 @@ load(char *user_filename)
 	ssize_t stat_res = stat(filename, &st);
 	if (stat_res == -1) err(1, "Cannot stat file '%s'", filename);
 
-	char *filebuf = calloc(st.st_size, sizeof(char));
+	char *filebuf = ecalloc(st.st_size, sizeof(char));
 	FILE *fp = fopen(filename, "rb");
 	fread(filebuf, st.st_size, sizeof(char), fp);
 	fclose(fp);
@@ -132,9 +129,12 @@ load(char *user_filename)
 			return;
 		}
 
+		FILE *fakefp = fmemopen(start, st.st_size - (start - filebuf), "r");
+		assert(fakefp != NULL);
+
 		ssize_t gc = fe_savegc(fe_ctx);
 		while (true) {
-			fe_Object *obj = fe_read(fe_ctx, _fe_read, (void *)&start);
+			fe_Object *obj = fe_readfp(fe_ctx, fakefp);
 
 			// break if there's nothing left to read
 			if (!obj) break;
@@ -184,7 +184,7 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 				} break; case 'n': {
 					objs[i + 1] = fe_number(fe_ctx, (float)va_arg(ap, double));
 				} break; default: {
-					assert(false);
+					unreachable();
 				} break;
 				}
 			}
@@ -210,7 +210,7 @@ call_func(const char *fnname, const char *arg_fmt, ...)
 				} break; case 'n': {
 					args[i] = janet_wrap_number(va_arg(ap, double));
 				} break; default: {
-					assert(false);
+					unreachable();
 				} break;
 				}
 			}
@@ -241,7 +241,7 @@ get_string_global(char *name, char *buf, size_t sz)
 		if (fe_type(fe_ctx, var) == FE_TSTRING) {
 			fe_tostring(fe_ctx, var, buf, sz);
 		} else {
-			// TODO: error
+			fe_errorf("Global '%s' must be a string", name);
 		}
 		fe_restoregc(fe_ctx, gc);
 	} else if (lang == LM_Janet) {
@@ -273,7 +273,7 @@ get_number_global(char *name)
 		if (fe_type(fe_ctx, var) == FE_TNUMBER) {
 			return fe_tonumber(fe_ctx, var);
 		} else {
-			// TODO: error
+			fe_errorf("Global '%s' must be a number", name);
 			return 0;
 		}
 		fe_restoregc(fe_ctx, gc);

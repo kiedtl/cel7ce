@@ -129,6 +129,7 @@ init_vm(void)
 	}
 
 	fe_Handlers *hnds = fe_handlers(fe_ctx);
+	assert(hnds != NULL);
 	hnds->error = _fe_error;
 	// }}}
 }
@@ -136,8 +137,8 @@ init_vm(void)
 static void
 init_mem(void)
 {
-	memory[BK_Normal] = calloc(MEMORY_SIZE, sizeof(uint8_t));
-	memory[BK_Rom]    = calloc(MEMORY_SIZE, sizeof(uint8_t));
+	memory[BK_Normal] = ecalloc(MEMORY_SIZE, sizeof(uint8_t));
+	memory[BK_Rom]    = ecalloc(MEMORY_SIZE, sizeof(uint8_t));
 
 	// Initialize colors.
 	for (size_t i = 0; i < ARRAY_LEN(colors); ++i) {
@@ -176,7 +177,7 @@ static void
 set_vals(void)
 {
 	// Janet
-	// TODO: set documentation
+	// Documentation deliberately elided.
 	{
 		Janet j_title = janet_stringv((const uint8_t *)config.title, strlen(config.title));
 		janet_def(janet_env, "title", j_title, "");
@@ -225,7 +226,7 @@ load_builtins(void)
 		size_t size = ftell(df);
 		fseek(df, 0L, SEEK_SET);
 
-		char *buf = calloc(size, sizeof(char));
+		char *buf = ecalloc(size, sizeof(char));
 		fread(buf, size, sizeof(char), df);
 		fclose(df);
 		janet_dostring(janet_env, buf, builtin_files[i], NULL);
@@ -242,8 +243,13 @@ deinit_mem(void)
 static void
 deinit_vm(void)
 {
+	assert(fe_ctx != NULL);
+
 	fe_close(fe_ctx);
 	free(fe_ctx_data);
+
+	fe_ctx = NULL;
+	fe_ctx_data = NULL;
 
 	janet_deinit();
 }
@@ -325,7 +331,7 @@ draw(void)
 
 	uint32_t *frame = NULL;
 	if (is_recording) {
-		frame = calloc(
+		frame = ecalloc(
 			config.height * FONT_HEIGHT * config.width * FONT_WIDTH,
 			sizeof(uint32_t)
 		);
@@ -491,10 +497,8 @@ dump_recording(void)
 	if (!g_file) goto giflib_error;
 
 	// Output image headers.
-	// {{{
 	if (EGifPutScreenDesc(g_file, g_width, g_height, 8, 0, NULL) == GIF_ERROR)
 		goto giflib_error;
-	// }}}
 
 	// Create an image loop with the netscape extension.
 	// See: http://www.vurdalakov.net/misc/gif/netscape-looping-application-extension
@@ -515,6 +519,7 @@ dump_recording(void)
 	EGifPutExtensionBlock(g_file, ARRAY_LEN(nsle) - 1, nsle);
 	EGifPutExtensionBlock(g_file, ARRAY_LEN(subblock), subblock);
 	EGifPutExtensionTrailer(g_file);
+	// }}}
 
 	int i;
 	uint32_t *frame;
@@ -524,7 +529,7 @@ dump_recording(void)
 		GifColorType colors[16] = {0};
 		size_t colors_num = 0;
 
-		GifByteType *g_frame_pixels = calloc(sz, sizeof(GifByteType));
+		GifByteType *g_frame_pixels = ecalloc(sz, sizeof(GifByteType));
 
 		// Extract palette and create palette-ified frame for gif.
 		for (size_t i = 0; i < sz; ++i) {

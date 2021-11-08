@@ -113,9 +113,11 @@ extern const struct ApiFunc fe_apis[19];
 
 #define UNUSED(x) (void)(x)
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
-#define fe_errorf(...) raise_errorf(LM_Fe, __VA_ARGS__)
+#define fe_errorf(...) (raise_errorf(LM_Fe, __VA_ARGS__))
+#define unreachable()  (__unreachable(__FILE__, __func__, __LINE__))
 
-_Noreturn void unreachable(void);
+void *ecalloc(size_t nmemb, size_t size);
+_Noreturn void __unreachable(const char *file, const char *func, int line);
 uint32_t decode_u32_from_bytes(uint8_t *bytes);
 char *get_username(void);
 void load(char *user_filename);
