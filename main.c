@@ -139,6 +139,7 @@ init_mem(void)
 	memory[BK_Normal] = calloc(MEMORY_SIZE, sizeof(uint8_t));
 	memory[BK_Rom]    = calloc(MEMORY_SIZE, sizeof(uint8_t));
 
+	// Initialize colors.
 	for (size_t i = 0; i < ARRAY_LEN(colors); ++i) {
 		size_t addr = PALETTE_START + (i * 4);
 		for (size_t b = 0; b < 4; ++b) {
@@ -147,6 +148,7 @@ init_mem(void)
 		}
 	}
 
+	// Initialize fonts.
 	for (size_t i = 0; i < ARRAY_LEN(font); ++i) {
 		for (size_t j = 0; j < FONT_WIDTH; ++j) {
 			size_t ch = font[i][j] == 'x' ? 1 : 0;
@@ -154,6 +156,14 @@ init_mem(void)
 		}
 	}
 
+	// Initialize display portion of BK_Rom to some stuff. This will only
+	// be seen if the user accidentally switches banks across step() calls
+	// and cel7 ends up drawing from BK_Rom.
+	//
+	for (size_t i = DISPLAY_START; i < MEMORY_SIZE; ++i) {
+		//memory[BK_Rom][i] = "\xAA\xBB\xCC\xDD\xEE\xFF"[i % 5];
+		memory[BK_Rom][i] = "BLACKLIVESMATTER"[i % 16];
+	}
 }
 
 // Set values of config variables in scripting VMs to the values in `config.*`.
@@ -326,27 +336,27 @@ draw(void)
 	for (size_t dy = 0; dy < config.height; ++dy) {
 		for (size_t dx = 0; dx < config.width; ++dx) {
 			size_t addr = DISPLAY_START + ((dy * config.width + dx) * 2);
-			size_t ch   = (memory[BK_Normal][addr + 0]);
-			size_t fg_i = (memory[BK_Normal][addr + 1] >> 0) & 0xF;
-			size_t bg_i = (memory[BK_Normal][addr + 1] >> 4) & 0xF;
+			size_t ch   = (memory[bank][addr + 0]);
+			size_t fg_i = (memory[bank][addr + 1] >> 0) & 0xF;
+			size_t bg_i = (memory[bank][addr + 1] >> 4) & 0xF;
 
 			// Handle unprintable chars
 			if (ch < 32 || ch > 126)
 				ch = FONT_FALLBACK_GLYPH;
 
 			size_t bg_addr = PALETTE_START + (bg_i * 4);
-			size_t bg = decode_u32_from_bytes(&memory[BK_Normal][bg_addr]);
+			size_t bg = decode_u32_from_bytes(&memory[bank][bg_addr]);
 			bg = (bg << 8) | 0xFF; // Add alpha
 
 			size_t fg_addr = PALETTE_START + (fg_i * 4);
-			size_t fg = decode_u32_from_bytes(&memory[BK_Normal][fg_addr]);
+			size_t fg = decode_u32_from_bytes(&memory[bank][fg_addr]);
 			fg = (fg << 8) | 0xFF; // Add alpha
 
 			size_t font = FONT_START + ((ch - 32) * FONT_WIDTH * FONT_HEIGHT);
 
 			for (size_t fy = 0; fy < FONT_HEIGHT; ++fy) {
 				for (size_t fx = 0; fx < FONT_WIDTH; ++fx) {
-					size_t font_ch = memory[BK_Normal][font + (fy * FONT_WIDTH + fx)];
+					size_t font_ch = memory[bank][font + (fy * FONT_WIDTH + fx)];
 					size_t color = font_ch ? fg : bg;
 					size_t addr = (((dy * FONT_HEIGHT) + fy) * (config.width * FONT_WIDTH) + ((dx * FONT_WIDTH) + fx));
 					pixels[addr] = color;
