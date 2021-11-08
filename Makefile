@@ -62,7 +62,7 @@ ifeq ($(OS),Windows_NT)
 endif
 
 CFLAGS   = -Og -g $(DEF) $(INCL) $(WARNING) -funsigned-char -fstack-protector-strong
-LDFLAGS  = -fuse-ld=$(LD) -lSDL2 -lgif
+LDFLAGS  = -fuse-ld=$(LD) -static -lSDL2 -Wl,-Bdynamic -lgif
 
 ifeq ($(OS),Windows_NT)
 	LDFLAGS  += -L$(WIN_SDL_LIB) $(WIN_LDFLAGS)
