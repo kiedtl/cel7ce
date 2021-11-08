@@ -97,7 +97,7 @@ extern struct timeval delay_val;
 
 extern uint8_t *memory[BK_COUNT];
 extern size_t bank;
-extern size_t color;
+extern uint8_t color;
 
 extern JanetTable *janet_env;
 extern void *fe_ctx_data;
@@ -112,13 +112,16 @@ extern SDL_Texture *texture;
 
 extern const char font[96 * FONT_HEIGHT][FONT_WIDTH];
 extern const struct JanetReg janet_apis[16];
-extern const struct ApiFunc fe_apis[18];
+extern const struct ApiFunc fe_apis[19];
 
+_Noreturn void unreachable(void);
 uint32_t decode_u32_from_bytes(uint8_t *bytes);
 char *get_username(void);
 void load(char *user_filename);
 void call_func(const char *fnname, const char *arg_fmt, ...);
 void get_string_global(char *name, char *buf, size_t sz);
 float get_number_global(char *name);
+void __attribute__((format(printf, 2, 3))) fe_errorf(fe_Context *ctx, const char *fmt, ...);
+void check_user_address(enum LangMode lm, size_t addr, size_t sz, _Bool write);
 
 #endif

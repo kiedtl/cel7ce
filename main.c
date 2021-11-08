@@ -75,7 +75,7 @@ struct timeval delay_val = {0};
 
 uint8_t *memory[BK_COUNT] = {0};
 size_t bank = BK_Normal;
-size_t color = 1;
+uint8_t color = 1;
 
 JanetTable *janet_env;
 void *fe_ctx_data = NULL;

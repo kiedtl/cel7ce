@@ -10,18 +10,9 @@
 static Janet
 janet_lderr(int32_t argc, Janet *argv)
 {
+	UNUSED(argv);
 	janet_fixarity(argc, 0);
 	return janet_wrap_boolean(load_error);
-}
-
-
-static Janet
-janet_swibnk(int32_t argc, Janet *argv)
-{
-	janet_fixarity(argc, 1);
-	bank = (size_t)janet_getnumber(argv, 0);
-	// TODO: validate input
-	return janet_wrap_nil();
 }
 
 static Janet
@@ -48,7 +39,7 @@ janet_idivide(int32_t argc, Janet *argv)
 		accm /= arg;
 	}
 
-	return janet_wrap_number(accm);
+	return janet_wrap_number(round(accm));
 }
 
 static Janet
@@ -65,6 +56,11 @@ janet_rand(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 1);
 	size_t n = (size_t)janet_getnumber(argv, 0);
+
+	if (n == 0) {
+		janet_panicf("Expected non-zero argument.");
+	}
+
 	return janet_wrap_number((double)(rand() % n));
 }
 
@@ -72,14 +68,15 @@ static Janet
 janet_poke(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 2);
-	// TODO: ensure in correct bank
 
 	size_t addr = (size_t)janet_getnumber(argv, 0);
 
 	if (janet_checktype(argv[1], JANET_STRING)) {
 		JanetString str = janet_getstring(argv, 1);
+		check_user_address(LM_Janet, addr, janet_string_length(str), true);
 		memcpy(&memory[bank][addr], str, janet_string_length(str));
 	} else if (janet_checktype(argv[1], JANET_NUMBER)) {
+		check_user_address(LM_Janet, addr, 1, true);
 		size_t byte = (uint8_t)janet_getnumber(argv, 1);
 		memory[bank][addr] = byte;
 	} else {
@@ -99,12 +96,15 @@ janet_peek(int32_t argc, Janet *argv)
 	size_t size = (size_t)janet_optnumber(argv, argc, 1, 1);
 
 	if (size > 1) {
+		check_user_address(LM_Janet, addr, size, false);
+
 		char *buf = janet_smalloc(size);
 		memset(buf, 0x0, size);
 		memcpy(buf, (void *)&memory[bank][addr], size);
 
 		return janet_stringv((uint8_t *)buf, size);
 	} else {
+		check_user_address(LM_Janet, addr, 1, false);
 		return janet_wrap_number((double)memory[bank][addr]);
 	}
 }
@@ -113,7 +113,7 @@ static Janet
 janet_color(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 1);
-	color = (size_t)janet_getnumber(argv, 0);
+	color = (uint8_t)janet_getnumber(argv, 0);
 	return janet_wrap_nil();
 }
 
@@ -121,7 +121,10 @@ static Janet
 janet_cel7put(int32_t argc, Janet *argv)
 {
 	janet_arity(argc, 3, -1);
-	// TODO: ensure in correct bank
+
+	if (bank == BK_Rom) {
+		janet_panicf("Cannot write to bank.");
+	}
 
 	size_t sx = (size_t)janet_getnumber(argv, 0);
 	size_t sy = (size_t)janet_getnumber(argv, 1);
@@ -145,7 +148,6 @@ static Janet
 janet_cel7get(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 2);
-	// TODO: ensure in correct bank
 
 	size_t x = (size_t)janet_getnumber(argv, 0);
 	size_t y = (size_t)janet_getnumber(argv, 1);
@@ -158,7 +160,10 @@ static Janet
 janet_fill(int32_t argc, Janet *argv)
 {
 	janet_fixarity(argc, 5);
-	// TODO: ensure in correct bank
+
+	if (bank == BK_Rom) {
+		janet_panicf("Cannot write to bank.");
+	}
 
 	size_t x = (size_t)janet_getnumber(argv, 0);
 	size_t y = (size_t)janet_getnumber(argv, 1);
@@ -198,6 +203,10 @@ janet_delay(int32_t argc, Janet *argv)
 	janet_fixarity(argc, 1);
 	double delay = janet_getnumber(argv, 0);
 
+	if (delay < 0 || !isnormal(delay)) {
+		janet_panicf("Delay %f invalid.", delay);
+	}
+
 	delay_val.tv_sec  = (time_t)round(delay);
 	delay_val.tv_usec = (suseconds_t)((delay - round(delay)) * 1000000);
 	gettimeofday(&delay_set, NULL);
@@ -213,9 +222,24 @@ janet_ticks(int32_t argc, Janet *argv)
 	return janet_wrap_number((double)mode.steps[mode.cur]);
 }
 
+static Janet
+janet_swibnk(int32_t argc, Janet *argv)
+{
+	janet_fixarity(argc, 1);
+
+	double bank_arg = janet_getnumber(argv, 0);
+
+	if (bank_arg < 0 || bank_arg > BK_COUNT) {
+		janet_panicf("Cannot switch to bank %.f.", bank_arg);
+	}
+
+	bank = (size_t)bank_arg;
+
+	return janet_wrap_nil();
+}
+
 const struct JanetReg janet_apis[16] = {
 	{     "lderr",    janet_lderr, "" },
-	{    "swibnk",   janet_swibnk, "" },
 	{     "swimd",    janet_swimd, "" },
 	{        "//",  janet_idivide, "" },
 	{      "quit",     janet_quit, "" },
@@ -229,6 +253,7 @@ const struct JanetReg janet_apis[16] = {
 	{  "username", janet_username, "" },
 	{     "delay",    janet_delay, "" },
 	{     "ticks",    janet_ticks, "" },
+	{    "swibnk",   janet_swibnk, "" },
 
 	// Include a null sentinel, because janet_cfunc is too braindamaged
 	// to take a "sz" parameter.

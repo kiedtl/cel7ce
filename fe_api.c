@@ -14,7 +14,7 @@ fe_divide(fe_Context *ctx, fe_Object *arg)
 		accm /= b;
 	} while (fe_type(ctx, arg) == FE_TPAIR);
 
-	return fe_number(ctx, (float)round(accm));
+	return fe_number(ctx, roundf(accm));
 }
 
 static fe_Object *
@@ -22,6 +22,11 @@ fe_modulus(fe_Context *ctx, fe_Object *arg)
 {
 	ssize_t a = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	ssize_t b = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+
+	if (b == 0) {
+		fe_errorf(ctx, "Tried to divide %d by zero", a);
+	}
+
 	return fe_number(ctx, (float)(a % b));
 }
 
@@ -37,6 +42,11 @@ static fe_Object *
 fe_rand(fe_Context *ctx, fe_Object *arg)
 {
 	ssize_t n = (ssize_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+
+	if (n == 0) {
+		fe_errorf(ctx, "Expected non-zero argument.");
+	}
+
 	return fe_number(ctx, (float)(rand() % n));
 }
 
@@ -45,16 +55,20 @@ fe_poke(fe_Context *ctx, fe_Object *arg)
 {
 	size_t addr = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	fe_Object *payload = fe_nextarg(ctx, &arg);
-	// TODO: ensure in correct bank
+
+	static char buf[MEMORY_SIZE];
+	size_t sz = 0;
 
 	if (fe_type(ctx, payload) == FE_TSTRING) {
-		char buf[4096] = {0};
-		size_t sz = fe_tostring(ctx, payload, (char *)&buf, sizeof(buf));
-		memcpy(&memory[bank][addr], (char *)&buf, sz);
+		sz = fe_tostring(ctx, payload, buf, sizeof(buf));
 	} else {
-		size_t byte = (uint8_t)fe_tonumber(ctx, payload);
-		memory[bank][addr] = byte;
+		buf[0] = (uint8_t)fe_tonumber(ctx, payload);
+		sz = 1;
 	}
+
+	check_user_address(LM_Fe, addr, sz, true);
+
+	memcpy(&memory[bank][addr], buf, sz);
 
 	return fe_bool(ctx, 0);
 }
@@ -68,11 +82,17 @@ fe_peek(fe_Context *ctx, fe_Object *arg)
 	if (fe_type(ctx, arg) == FE_TPAIR) {
 		size = (size_t)fe_tonumber(ctx, fe_car(ctx, arg));
 
-		char buf[4096] = {0};
-		memcpy((void *)&buf, (void *)&memory[bank][addr], size);
+		check_user_address(LM_Fe, addr, size, false);
 
-		return fe_string(ctx, (const char *)&buf);
+		char *buf = calloc(size, sizeof(char));
+		memcpy(buf, (void *)&memory[bank][addr], size);
+
+		fe_Object *retval = fe_string(ctx, (const char *)&buf);
+		free(buf);
+		return retval;
 	} else {
+		check_user_address(LM_Fe, addr, 1, false);
+
 		return fe_number(ctx, (float)memory[bank][addr]);
 	}
 }
@@ -87,8 +107,11 @@ fe_color(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_put(fe_Context *ctx, fe_Object *arg)
 {
-	char buf[4096] = {0};
-	// TODO: ensure in correct bank
+	static char buf[MEMORY_SIZE];
+
+	if (bank == BK_Rom) {
+		fe_errorf(ctx, "Cannot write to bank.");
+	}
 
 	size_t sx = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t sy = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
@@ -115,7 +138,6 @@ fe_put(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_get(fe_Context *ctx, fe_Object *arg)
 {
-	// TODO: ensure in correct bank
 	size_t x = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t y = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	uint8_t res = memory[BK_Normal][y * config.width + x + 0];
@@ -125,7 +147,10 @@ fe_get(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_fill(fe_Context *ctx, fe_Object *arg)
 {
-	// TODO: ensure in correct bank
+	if (bank == BK_Rom) {
+		fe_errorf(ctx, "Cannot write to bank.");
+	}
+
 	size_t x = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t y = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 	size_t w = (size_t)fe_tonumber(ctx, fe_nextarg(ctx, &arg));
@@ -153,7 +178,7 @@ fe_fill(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_strlen(fe_Context *ctx, fe_Object *arg)
 {
-	static char buf[4096] = {0};
+	static char buf[4096];
 	size_t sz = fe_tostring(ctx, fe_nextarg(ctx, &arg), (char *)&buf, sizeof(buf));
 	return fe_number(ctx, (float)sz);
 }
@@ -204,10 +229,14 @@ fe_username(fe_Context *ctx, fe_Object *arg)
 static fe_Object *
 fe_delay(fe_Context *ctx, fe_Object *arg)
 {
-	double delay = fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+	float delay = fe_tonumber(ctx, fe_nextarg(ctx, &arg));
 
-	delay_val.tv_sec  = (time_t)round(delay);
-	delay_val.tv_usec = (suseconds_t)((delay - round(delay)) * 1000000);
+	if (delay < 0 || !isnormal(delay)) {
+		fe_errorf(ctx, "Delay %f invalid.", delay);
+	}
+
+	delay_val.tv_sec  = (time_t)roundf(delay);
+	delay_val.tv_usec = (suseconds_t)((delay - roundf(delay)) * 1000000);
 	gettimeofday(&delay_set, NULL);
 
 	return fe_bool(ctx, 0);
@@ -220,7 +249,21 @@ fe_ticks(fe_Context *ctx, fe_Object *arg)
 	return fe_number(ctx, (float)mode.steps[mode.cur]);
 }
 
-const struct ApiFunc fe_apis[18] = {
+static fe_Object *
+fe_swibnk(fe_Context *ctx, fe_Object *arg)
+{
+	float bank_arg = fe_tonumber(ctx, fe_nextarg(ctx, &arg));
+
+	if (bank_arg < 0 || bank_arg > BK_COUNT) {
+		fe_errorf(ctx, "Cannot switch to bank %.f.", bank_arg);
+	}
+
+	bank = (size_t)bank_arg;
+
+	return fe_bool(ctx, 0);
+}
+
+const struct ApiFunc fe_apis[19] = {
 	{        "//",    fe_divide },
 	{         "%",   fe_modulus },
 	{      "quit",      fe_quit },
@@ -239,4 +282,5 @@ const struct ApiFunc fe_apis[18] = {
 	{  "username",  fe_username },
 	{     "delay",     fe_delay },
 	{     "ticks",     fe_ticks },
+	{    "swibnk",    fe_swibnk },
 };
