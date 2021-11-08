@@ -5,9 +5,13 @@ x Fix key naming
   x Add "shebang" to allow janet code to be embedded in binary
   - Lock down or remove Janet's stdlib
 - Cleanly throw errors
-  - Invalid API calls
-  - Bad memory bank accesses
+  x Invalid API calls
+  x Bad memory bank accesses
   - Invalid config values
+- Revamp str* fe functions
+  - strlen ⇒ #
+  - strat  ⇒ @
+  - Fix string truncations
 x Create and use new font
 - Lore
   - README
@@ -19,6 +23,8 @@ x Create and use new font
     - Sprite format
     - Color format
 - Retrieve source for tetris
+- Switch away from args.h
+  - (It can't handle options that come after args.)
 - Switch to meson/muon + ninja/samurai for build system
 
 TODO v1.1.0
@@ -35,10 +41,16 @@ TODO v1.1.0
   - reload cartridge
   - view cartridge source
   - view cartridge info (author, date, etc)
+- Fix recording issues
+  - Choose another method of storing frames to conserve memory
+    - Perhaps do palette extraction on draw() instead of afterwards?
+  - Record delay between frames
 
 TODO <future>
 -------------
-- FreeBSD/OpenBSD support
+- FreeBSD support
+- OpenBSD support
+  - pledge/unveil usage
 
 Misc
 ----
@@ -48,6 +60,8 @@ Misc
   - Provide example of pcall + error handling
 - Improve fe docs
   - Example for variadic args with cfunction
+- fe patches
+  - Make fe_error sprintf-like
 
 Ideas
 -----
@@ -66,9 +80,16 @@ Ideas
 - Up to 7 colors for sprites
   - Would break display format...
     - Alternative buffer/bank?
-    - Or optional display mode switching API that changes
-      display buffer layout to work with this...
+    - Or optional display mode switching API that changes display buffer layout
+      to work with this...
 - New APIs:
   - flr()
   - mid()
   - camera()
+- Network abstraction APIs
+  - conn(), recv(), send(), gbye()
+  - libtls, libretls, or libtls-bearssl
+  - would allow writing:
+    - a tiny documentation viewer for online docs
+    - a gemini/gopher client
+    - client for klud.ge
