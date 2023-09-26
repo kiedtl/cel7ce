@@ -15,8 +15,9 @@ SRC      = assets.c font.c janet_api.c fe_api.c util.c \
 ASSETS   = builtin/start.janet builtin/setup.janet builtin/error.janet
 OBJ      = $(SRC:.c=.o)
 
-KOIO_BIN = third_party/koio/build/koio
-KOIO_AR  = third_party/koio/build/koio.a
+KOIO_DIR = third_party/koio/build/
+KOIO_BIN = $(KOIO_DIR)/koio
+KOIO_AR  = $(KOIO_DIR)/koio.a
 KOIO_SRC = third_party/koio/lib/ko_add_alias.c third_party/koio/lib/ko_add_file.c \
 	   third_party/koio/lib/ko_del_file.c third_party/koio/lib/ko_fopen.c \
 	   third_party/koio/lib/hashtable.c
@@ -62,7 +63,8 @@ ifeq ($(OS),Windows_NT)
 endif
 
 CFLAGS   = -Og -g $(DEF) $(INCL) $(WARNING) -funsigned-char -fstack-protector-strong
-LDFLAGS  = -fuse-ld=$(LD) -static -lSDL2 -Wl,-Bdynamic -lgif
+LDFLAGS  = -fuse-ld=$(LD) -lSDL2 -lgif -lm -ldl
+#LDFLAGS  = -fuse-ld=$(LD) -static -lSDL2 -Wl,-Bdynamic -lgif
 
 ifeq ($(OS),Windows_NT)
 	LDFLAGS  += -L$(WIN_SDL_LIB) $(WIN_LDFLAGS)
@@ -104,6 +106,7 @@ $(KOIO_BIN): $(KOIO_AR)
 	
 $(KOIO_AR): $(KOIO_OBJ)
 	@printf "    %-8s%s\n" "AR" $@
+	$(CMD)mkdir -p $(KOIO_DIR)
 	$(CMD)ar rvs $@ $^ >/dev/null
 
 $(BIN): main.c $(OBJ) $(KOIO_AR) builtin/default.fe
